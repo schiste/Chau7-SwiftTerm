@@ -4,6 +4,7 @@ import Foundation
 import Testing
 @testable import SwiftTerm
 
+@MainActor
 final class SwiftTermTests {
     static let esctest: String = {
         // Compute path relative to source file to work from any working directory (including Xcode)
@@ -12,8 +13,9 @@ final class SwiftTermTests {
         return projectRoot.appendingPathComponent("esctest/esctest/esctest.py").path
     }()
     static let queue: DispatchQueue = {
-        let queue = DispatchQueue(label: "Runner", qos: .userInteractive, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil)
-        return queue
+        // Tests run on the main actor; keep the terminal queue on main to satisfy
+        // the thread-confinement contract enforced by Terminal.
+        DispatchQueue.main
     }()
     let termConfig = "--expected-terminal xterm --xterm-checksum=334"
     let logfile = NSTemporaryDirectory() + "log"

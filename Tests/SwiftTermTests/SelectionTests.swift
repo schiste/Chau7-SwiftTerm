@@ -10,7 +10,8 @@ import Testing
 
 @testable import SwiftTerm
 
-final class SelectionTests: TerminalDelegate {
+@MainActor
+final class SelectionTests: @preconcurrency TerminalDelegate {
     func send(source: Terminal, data: ArraySlice<UInt8>) {
         print ("here")
     }

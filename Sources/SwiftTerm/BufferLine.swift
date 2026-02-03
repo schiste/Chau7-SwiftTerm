@@ -23,6 +23,11 @@ public final class BufferLine: CustomDebugStringConvertible {
     }
     var isWrapped: Bool
     var renderMode: RenderLineMode = .single
+    /// Semantic line type assigned by OSC 133 shell integration
+    var semanticType: SemanticLineType = .none
+    /// Tracks whether this line has been modified since last render.
+    /// The rendering pipeline clears this after drawing; mutation methods set it.
+    var isDirty: Bool = true
     private var data: [CharData]
     private var dataSize: Int
     
@@ -43,6 +48,8 @@ public final class BufferLine: CustomDebugStringConvertible {
         fillCharacter = other.fillCharacter
         isWrapped = other.isWrapped
         renderMode = other.renderMode
+        semanticType = other.semanticType
+        isDirty = other.isDirty
         images = other.images
         data = Array(other.data)
         dataSize = other.dataSize
@@ -72,6 +79,7 @@ public final class BufferLine: CustomDebugStringConvertible {
             return data [index]
         }
         set(value) {
+            isDirty = true
             if index >= dataSize {
                 // All bugs I was aware of have been handled, but keep this message here to
                 // help future refactorings.
@@ -89,6 +97,7 @@ public final class BufferLine: CustomDebugStringConvertible {
     }
     
     func clear(with attribute: Attribute) {
+        isDirty = true
         let dataSize = dataSize
         let empty = CharData(attribute: attribute)
         data.replaceSubrange(0..<dataSize, with: repeatElement(empty, count: dataSize))
@@ -116,6 +125,7 @@ public final class BufferLine: CustomDebugStringConvertible {
     ///  - fillData: the data that will be filled into the line
     public func insertCells (pos: Int, n: Int, rightMargin: Int, fillData: CharData)
     {
+        isDirty = true
         let len = rightMargin + 1
         //let len = data.count
         let pos = pos % len
@@ -136,8 +146,9 @@ public final class BufferLine: CustomDebugStringConvertible {
     /// Removes the cells at the specified position, shifting data leftwards
     public func deleteCells (pos: Int, n: Int, rightMargin: Int, fillData: CharData)
     {
+        isDirty = true
         // let len = data.count
-        let len = rightMargin + 1 
+        let len = rightMargin + 1
         let p = pos % len
         if n < len - p {
             for i in 0..<len-pos-n {
@@ -156,6 +167,7 @@ public final class BufferLine: CustomDebugStringConvertible {
     /// Replaces the cells in the start to end range with the specified fill data
     public func replaceCells (start: Int, end: Int, fillData : CharData)
     {
+        isDirty = true
         let length = dataSize
         var idx = start
         while idx < end && idx < length {
@@ -172,6 +184,7 @@ public final class BufferLine: CustomDebugStringConvertible {
         if len == cols {
             return
         }
+        isDirty = true
         
         if cols > len {
             var newData = Array.init(repeating: fillData, count: cols)
@@ -196,6 +209,7 @@ public final class BufferLine: CustomDebugStringConvertible {
     /// Fills the entire bufferline with the specified ``CharData``
     public func fill (with: CharData)
     {
+        isDirty = true
         for i in 0..<dataSize {
             data [i] = with
         }
@@ -208,6 +222,7 @@ public final class BufferLine: CustomDebugStringConvertible {
     ///  - len: number of columns to fill
     public func fill (with: CharData, atCol: Int, len: Int)
     {
+        isDirty = true
         for i in 0..<len {
             data [i+atCol] = with
         }
@@ -216,9 +231,11 @@ public final class BufferLine: CustomDebugStringConvertible {
     /// Fills the current BufferLine with the contents of another BufferLine.
     public func copyFrom (line: BufferLine)
     {
+        isDirty = true
         data = line.data
         dataSize = line.dataSize
         isWrapped = line.isWrapped
+        semanticType = line.semanticType
     }
     
     /// Returns the trimmed length in terms of cells used from the BufferLine
@@ -241,6 +258,7 @@ public final class BufferLine: CustomDebugStringConvertible {
     ///  - len: the number of elements to copy
     public func copyFrom (_ src: BufferLine, srcCol: Int, dstCol: Int, len: Int)
     {
+        isDirty = true
         data.replaceSubrange(dstCol..<(dstCol+len), with: src.data [srcCol..<(srcCol+len)])
     }
     

@@ -12,9 +12,10 @@ import Testing
 
 @testable import SwiftTerm
 
+@MainActor
 final class SwiftTermMemory {
-    static var deinited = false
-    static var terminalDeinited = false
+    nonisolated(unsafe) static var deinited = false
+    nonisolated(unsafe) static var terminalDeinited = false
     class SimpleTerminal: HeadlessTerminal {
         
         init (queue: DispatchQueue) {
@@ -31,7 +32,7 @@ final class SwiftTermMemory {
     }
     class SubTerminal: Terminal {
         init (delegate: TerminalDelegate) {
-            super.init(delegate: delegate)
+            super.init(delegates: TerminalDelegates(unified: delegate), options: .default, dispatchQueue: DispatchQueue.main)
         }
         
         deinit {

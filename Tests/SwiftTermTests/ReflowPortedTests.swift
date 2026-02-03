@@ -125,6 +125,7 @@ private func makeReflowSmallerBuffer() -> Buffer {
     return buffer
 }
 
+@MainActor
 final class ReflowPortedTests {
     @Test func testReflowDiscardWrappedLinesOutOfScrollback() {
         let buffer = makeBuffer(cols: 10, rows: 5, scrollback: 1)
@@ -611,6 +612,7 @@ final class ReflowPortedTests {
     }
 }
 
+@MainActor
 final class ReflowLineLengthTests {
     @Test func testGetNewLineLengthsSmallWideCharacters() {
         let buffer = makeBuffer(cols: 4, rows: 1, scrollback: 10)

@@ -1456,11 +1456,100 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
         return code
     }
     var keyRepeat: Timer?
-    
+
     /// It looks like sending carriage return works on Unix and Windows remote hosts, so add that, but keeping a public
     /// property in case someone needs the return key to send different sequences.
     public var returnByteSequence: [UInt8] = [13]
-    
+
+    /// Builds CSI u KeyModifiers from UIKey modifier flags.
+    private func enhancedModifiers(from flags: UIKeyModifierFlags) -> EscapeSequences.KeyModifiers {
+        var mods: EscapeSequences.KeyModifiers = []
+        if flags.contains(.shift)     { mods.insert(.shift) }
+        if flags.contains(.alternate) { mods.insert(.alt) }
+        if flags.contains(.control)   { mods.insert(.ctrl) }
+        return mods
+    }
+
+    /// Encodes a hardware key event using CSI u / Kitty keyboard protocol.
+    /// Returns nil if the key should fall through to the legacy path.
+    private func encodeKeyEnhanced(_ key: UIKey) -> [UInt8]? {
+        // Don't intercept Cmd combos
+        if key.modifierFlags.contains(.command) { return nil }
+
+        let mods = enhancedModifiers(from: key.modifierFlags)
+
+        // Arrow / Home / End
+        switch key.keyCode {
+        case .keyboardUpArrow:    return EscapeSequences.csiArrow(suffix: 0x41, modifiers: mods)
+        case .keyboardDownArrow:  return EscapeSequences.csiArrow(suffix: 0x42, modifiers: mods)
+        case .keyboardRightArrow: return EscapeSequences.csiArrow(suffix: 0x43, modifiers: mods)
+        case .keyboardLeftArrow:  return EscapeSequences.csiArrow(suffix: 0x44, modifiers: mods)
+        case .keyboardHome:       return EscapeSequences.csiArrow(suffix: 0x48, modifiers: mods)
+        case .keyboardEnd:        return EscapeSequences.csiArrow(suffix: 0x46, modifiers: mods)
+        default: break
+        }
+
+        // Function keys
+        switch key.keyCode {
+        case .keyboardF1:
+            return mods.isEmpty ? EscapeSequences.cmdF[0] : EscapeSequences.csiArrow(suffix: 0x50, modifiers: mods)
+        case .keyboardF2:
+            return mods.isEmpty ? EscapeSequences.cmdF[1] : EscapeSequences.csiArrow(suffix: 0x51, modifiers: mods)
+        case .keyboardF3:
+            return mods.isEmpty ? EscapeSequences.cmdF[2] : EscapeSequences.csiArrow(suffix: 0x52, modifiers: mods)
+        case .keyboardF4:
+            return mods.isEmpty ? EscapeSequences.cmdF[3] : EscapeSequences.csiArrow(suffix: 0x53, modifiers: mods)
+        case .keyboardF5:  return EscapeSequences.csiFunctional(number: 15, modifiers: mods)
+        case .keyboardF6:  return EscapeSequences.csiFunctional(number: 17, modifiers: mods)
+        case .keyboardF7:  return EscapeSequences.csiFunctional(number: 18, modifiers: mods)
+        case .keyboardF8:  return EscapeSequences.csiFunctional(number: 19, modifiers: mods)
+        case .keyboardF9:  return EscapeSequences.csiFunctional(number: 20, modifiers: mods)
+        case .keyboardF10: return EscapeSequences.csiFunctional(number: 21, modifiers: mods)
+        case .keyboardF11: return EscapeSequences.csiFunctional(number: 23, modifiers: mods)
+        case .keyboardF12: return EscapeSequences.csiFunctional(number: 24, modifiers: mods)
+        default: break
+        }
+
+        // Editing keys
+        switch key.keyCode {
+        case .keyboardDeleteForward: return EscapeSequences.csiFunctional(number: 3, modifiers: mods)
+        case .keyboardInsert:        return EscapeSequences.csiFunctional(number: 2, modifiers: mods)
+        case .keyboardPageUp:        return EscapeSequences.csiFunctional(number: 5, modifiers: mods)
+        case .keyboardPageDown:      return EscapeSequences.csiFunctional(number: 6, modifiers: mods)
+        default: break
+        }
+
+        // Special ASCII keys — CSI u only when modified
+        switch key.keyCode {
+        case .keyboardReturnOrEnter:
+            if !mods.isEmpty { return EscapeSequences.csiU(keycode: 13, modifiers: mods) }
+            return nil
+        case .keyboardTab:
+            if !mods.isEmpty { return EscapeSequences.csiU(keycode: 9, modifiers: mods) }
+            return nil
+        case .keyboardEscape:
+            if !mods.isEmpty { return EscapeSequences.csiU(keycode: 27, modifiers: mods) }
+            return nil
+        case .keyboardDeleteOrBackspace:
+            if !mods.isEmpty { return EscapeSequences.csiU(keycode: 127, modifiers: mods) }
+            return nil
+        default: break
+        }
+
+        // Regular characters with ctrl or alt → CSI u
+        if !mods.subtracting(.shift).isEmpty {
+            if let chars = key.charactersIgnoringModifiers,
+               let scalar = chars.unicodeScalars.first {
+                let codepoint = Int(scalar.value)
+                if codepoint >= 32 && codepoint < 0xF700 {
+                    return EscapeSequences.csiU(keycode: codepoint, modifiers: mods)
+                }
+            }
+        }
+
+        return nil
+    }
+
     public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         var didHandleEvent = false
 
@@ -1468,13 +1557,22 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
             super.pressesBegan(presses, with: event)
             return
         }
-        
+
         for press in presses {
             guard let key = press.key else { continue }
             uitiLog("pressesBegan keyCode:\(key.keyCode) chars:\(key.characters.debugDescription) ignoring:\(key.charactersIgnoringModifiers.debugDescription) modifiers:\(key.modifierFlags)")
-                
+
             var data: SendData? = nil
 
+            // Enhanced key reporting path (Kitty keyboard protocol / modifyOtherKeys mode 2)
+            if terminal.isEnhancedKeyReportingActive {
+                if let encoded = encodeKeyEnhanced(key) {
+                    data = .bytes(encoded)
+                }
+            }
+
+            // Legacy encoding fallback
+            if data == nil {
             switch key.keyCode {
             case .keyboardCapsLock:
                 break // ignored
@@ -1533,19 +1631,19 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
                 }
             case .keyboardHome:
                 data = .bytes (terminal.applicationCursor ? EscapeSequences.moveHomeApp : EscapeSequences.moveHomeNormal)
-                
+
             case .keyboardEnd:
                 data = .bytes (terminal.applicationCursor ? EscapeSequences.moveEndApp : EscapeSequences.moveEndNormal)
             case .keyboardDeleteForward:
                 data = .bytes (EscapeSequences.cmdDelKey)
-                
+
             case .keyboardEscape:
                 data = .bytes ([0x1b])
-                
+
             case .keyboardInsert:
                 print (".keyboardInsert ignored")
                 break
-                
+
             case .keyboardTab:
                 data = .bytes ([9])
 
@@ -1577,7 +1675,7 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
                 break
             case .keyboardPause, .keyboardStop, .keyboardMute, .keyboardVolumeUp, .keyboardVolumeDown:
                 break
-                
+
             default:
                 if key.modifierFlags.contains ([.alternate, .command]) && key.charactersIgnoringModifiers == "o" {
                     optionAsMetaKey.toggle()
@@ -1591,6 +1689,7 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
                     }
                 }
             }
+            } // end legacy fallback
             if let sendableData = data {
                 didHandleEvent = true
                 keyRepeat?.invalidate()

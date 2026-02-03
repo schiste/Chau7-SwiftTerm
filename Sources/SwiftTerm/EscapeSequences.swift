@@ -152,4 +152,58 @@ public struct EscapeSequences {
          [ 0x1b, 0x5b, 0x32, 0x34, 0x7e ], /* F12 */
     ]
 
+    // MARK: - CSI u Key Encoding (Kitty Keyboard Protocol / modifyOtherKeys)
+
+    /// Modifier bitmask values for CSI u encoding.
+    /// Encoded as `1 + bitmask` in the escape sequence.
+    public struct KeyModifiers: OptionSet {
+        public let rawValue: Int
+        public init(rawValue: Int) { self.rawValue = rawValue }
+
+        public static let shift   = KeyModifiers(rawValue: 1)
+        public static let alt     = KeyModifiers(rawValue: 2)
+        public static let ctrl    = KeyModifiers(rawValue: 4)
+        public static let meta    = KeyModifiers(rawValue: 8)   // Super/Cmd on macOS
+    }
+
+    /// Encodes a key event in CSI u format: `ESC [ keycode ; modifier u`
+    /// Used when Kitty keyboard protocol or modifyOtherKeys mode 2 is active.
+    /// - Parameters:
+    ///   - keycode: Unicode codepoint of the key (e.g. 97 for 'a', 13 for Enter)
+    ///   - modifiers: Modifier keys held during the event
+    /// - Returns: Encoded byte sequence
+    public static func csiU(keycode: Int, modifiers: KeyModifiers = []) -> [UInt8] {
+        let mod = 1 + modifiers.rawValue
+        if mod == 1 {
+            return [UInt8]("\u{1b}[\(keycode)u".utf8)
+        }
+        return [UInt8]("\u{1b}[\(keycode);\(mod)u".utf8)
+    }
+
+    /// Encodes a functional key with modifier in the tilde format: `ESC [ number ; modifier ~`
+    /// Used for keys like F5-F12, Insert, Delete, PageUp, PageDown.
+    /// - Parameters:
+    ///   - number: The key number (e.g. 15 for F5, 3 for Delete)
+    ///   - modifiers: Modifier keys held during the event
+    /// - Returns: Encoded byte sequence
+    public static func csiFunctional(number: Int, modifiers: KeyModifiers = []) -> [UInt8] {
+        let mod = 1 + modifiers.rawValue
+        if mod == 1 {
+            return [UInt8]("\u{1b}[\(number)~".utf8)
+        }
+        return [UInt8]("\u{1b}[\(number);\(mod)~".utf8)
+    }
+
+    /// Encodes an arrow/home/end key with modifier: `ESC [ 1 ; modifier {A|B|C|D|H|F}`
+    /// - Parameters:
+    ///   - suffix: The letter for the key (A=Up, B=Down, C=Right, D=Left, H=Home, F=End)
+    ///   - modifiers: Modifier keys held during the event
+    /// - Returns: Encoded byte sequence
+    public static func csiArrow(suffix: UInt8, modifiers: KeyModifiers = []) -> [UInt8] {
+        let mod = 1 + modifiers.rawValue
+        if mod == 1 {
+            return [0x1b, 0x5b, suffix]
+        }
+        return [UInt8]("\u{1b}[1;\(mod)".utf8) + [suffix]
+    }
 }

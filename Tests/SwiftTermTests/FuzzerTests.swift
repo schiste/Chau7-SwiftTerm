@@ -10,8 +10,26 @@ import Testing
 
 @testable import SwiftTerm
 
+@MainActor
 final class FuzzerTests {
-    var queue = DispatchQueue(label: "Runner", qos: .userInteractive, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil)
+    private let queue = SwiftTermTests.queue
+
+    private func resolveFuzzerFile(_ name: String) -> URL? {
+        let envDir = ProcessInfo.processInfo.environment["SWIFTTERM_FUZZER_DIR"]
+        let thisFile = URL(fileURLWithPath: #filePath)
+        let projectRoot = thisFile.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let resourceDir = projectRoot.appendingPathComponent("Tests/Resources/Fuzzer", isDirectory: true)
+
+        let candidates: [URL] = [
+            envDir.map { URL(fileURLWithPath: $0, isDirectory: true).appendingPathComponent(name) },
+            resourceDir.appendingPathComponent(name)
+        ].compactMap { $0 }
+
+        for url in candidates where FileManager.default.fileExists(atPath: url.path) {
+            return url
+        }
+        return nil
+    }
     
     // For manually testing stuff and use the Xcode debugger
     func testInput (d: Data)
@@ -32,19 +50,10 @@ final class FuzzerTests {
     //        "slow-unit-ff24adf923bfd5c9ccb4d58722c31c48d3f86480",
 
     func test (_ crash: String) {
-        var file: String
-        let t1 = "/Users/miguel/cvs/SwiftTerm/\(crash)"
-        let t2 = "/Users/miguel/cvs/SwiftTermFuzzerResults/\(crash)"
-        
-        if FileManager.default.fileExists(atPath: t1) {
-            file = t1
-        } else if FileManager.default.fileExists(atPath: t2) {
-            file = t2
-        } else {
-            print ("Data file \(crash) not found in the peer directory or this directory")
+        guard let url = resolveFuzzerFile(crash) else {
+            print("Data file \(crash) not found. Set SWIFTTERM_FUZZER_DIR or add it under Tests/Resources/Fuzzer.")
             return
         }
-        let url = URL(fileURLWithPath: file)
         let data: Data
         do {
             print ("Running test \(crash)")

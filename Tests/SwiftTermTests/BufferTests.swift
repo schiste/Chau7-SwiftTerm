@@ -11,7 +11,8 @@ import Testing
 
 @testable import SwiftTerm
 
-final class BufferTests: TerminalDelegate {
+@MainActor
+final class BufferTests: @preconcurrency TerminalDelegate {
     func send(source: Terminal, data: ArraySlice<UInt8>) {
         // Required by TerminalDelegate
     }

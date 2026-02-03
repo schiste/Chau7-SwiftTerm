@@ -17,6 +17,7 @@ struct MockTerminalImage: TerminalImage {
     var col: Int = 0
 }
 
+@MainActor
 final class ImageTests {
 
     @Test func testSixel() {
@@ -43,7 +44,8 @@ final class ImageTests {
 
 // MARK: - Image Tracking Tests
 
-final class ImageTrackingTests: TerminalDelegate {
+@MainActor
+final class ImageTrackingTests: @preconcurrency TerminalDelegate {
     func send(source: Terminal, data: ArraySlice<UInt8>) {
         // Required by TerminalDelegate
     }

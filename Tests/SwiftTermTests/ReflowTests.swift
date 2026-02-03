@@ -10,6 +10,7 @@ import Testing
 
 @testable import SwiftTerm
 
+@MainActor
 final class ReflowTests {
     
     @Test func testDoesNotCrashWhenReflowingToTinyWidth() {

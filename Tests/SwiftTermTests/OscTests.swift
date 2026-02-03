@@ -10,6 +10,7 @@ import Testing
 
 @testable import SwiftTerm
 
+@MainActor
 final class SwiftTermOsc {
     private final class TitleDelegate: TerminalDelegate {
         private(set) var titles: [String] = []

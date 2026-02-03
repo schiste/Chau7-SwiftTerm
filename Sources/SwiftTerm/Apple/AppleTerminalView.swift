@@ -289,6 +289,29 @@ extension TerminalView {
 
     public func synchronizedOutputChanged (source: Terminal, active: Bool)
     {
+        if active {
+            // Hide cursor during synchronized output to prevent flicker from
+            // intermediate cursor positions during full-buffer redraws (e.g. Claude Code / Ink)
+            caretView?.removeFromSuperview()
+        } else {
+            // Sync ended: the live buffer now has the final frame.
+            // Bypass the 60fps throttle so the complete frame appears immediately
+            // instead of waiting up to 16.67ms behind a potentially stale pending update.
+            //
+            // IMPORTANT: Defer to the next run-loop iteration because this callback
+            // fires DURING feed() processing — the terminal may still have unprocessed
+            // bytes in the current feed buffer. Rendering synchronously here would
+            // capture an intermediate buffer state (e.g. "1" written but "0" not yet),
+            // producing a single-frame glitch visible as a gap between characters.
+            // DispatchQueue.main.async defers by microseconds (not 16.67ms like
+            // DisplayLink), just enough for feed() to finish all remaining bytes.
+            updateScroller()
+            pendingDisplay = false
+            DispatchQueue.main.async { [weak self] in
+                self?.updateDisplay(notifyAccessibility: true)
+            }
+            return
+        }
         updateScroller()
         queuePendingDisplay()
     }
@@ -862,7 +885,7 @@ extension TerminalView {
     }
 
     
-    // TODO: this should not render any lines outside the dirtyRect
+    // Only render lines that intersect the dirty rect to minimize overdraw.
     func drawTerminalContents (dirtyRect: TTRect, context: CGContext, bufferOffset: Int)
     {
         let lineDescent = CTFontGetDescent(fontSet.normal)
@@ -959,16 +982,17 @@ extension TerminalView {
             // a case where we just get full exposes despite requesting only a line
             // repro: fill 300 lines, then clear screen then repeatedly output commands
             // that produce 3-5 lines of text: while we send AppKit the right boundary,
-            // AppKit still send everything.  
+            // AppKit still send everything.
             let lineRect = CGRect (origin: lineOrigin, size: CGSize (width: dirtyRect.width, height: cellDimension.height))
-            
+
             if !lineRect.intersects(dirtyRect) {
                 //print ("Skipping row \(row) because it does nto intersect")
                 continue
-            } 
+            }
             #endif
             let line = displayBuffer.lines [row]
             let lineInfo = buildAttributedString(row: row, line: line, cols: displayBuffer.cols)
+            line.isDirty = false
             let rowBase = lineOrigin.y + cellDimension.height
             var underTextImages: [AppleImage] = []
             var overTextKittyImages: [AppleImage] = []
@@ -1123,10 +1147,6 @@ extension TerminalView {
                     var coreTextPositions = [CGPoint](repeating: .zero, count: runGlyphsCount)
                     CTRunGetPositions(run, CFRange(), &coreTextPositions)
                     
-                    let firstCoreTextX = coreTextPositions.first?.x ?? 0
-                    let baseX = lineOrigin.x + (cellDimension.width * CGFloat(startColumn))
-                    let xOffset = baseX - firstCoreTextX
-
                     var positions = [CGPoint](repeating: .zero, count: runGlyphsCount)
                     for i in 0..<runGlyphsCount {
                         let ctPosition = coreTextPositions[i]

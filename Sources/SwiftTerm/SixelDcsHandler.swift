@@ -148,7 +148,7 @@ class SixelDcsHandler : DcsHandler {
             }
         }
 
-        terminal.tdel?.createImageFromBitmap(source: terminal, bytes: &pixels, width: maxX, height: maxY)
+        terminal.delegates.image?.createImageFromBitmap(source: terminal, bytes: &pixels, width: maxX, height: maxY)
     }
     
     var palette = [Int: UInt32]()

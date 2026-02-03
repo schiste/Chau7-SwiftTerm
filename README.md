@@ -65,7 +65,7 @@ Features
   * iTerm2-style graphic rendering (Use imgcat to test)
   * Kitty graphics (Use kittyimg to test)
 * Terminal session recording and playback with termcast
-* Thread-safe Terminal instances
+* Thread-confined Terminal instances (queue-bound for safety)
 * Fuzzed and abused
 * Seems pretty fast to me
 
@@ -84,6 +84,23 @@ traits, the shared code is under `Apple`.
 SwiftTerm uses the Swift Package Manager for its build, and you can
 add the library to your project by using the url for this project or a
 fork of it.
+
+### Threading Model
+
+`Terminal` is **queue-confined**. All calls that mutate or read terminal
+state must occur on the `dispatchQueue` provided at initialization. Use
+`terminal.runOnQueue { ... }` to schedule work and keep UI and parser
+updates serialized. This makes debugging deterministic and prevents
+race conditions in the core buffer/parser.
+
+### Delegates
+
+Instead of a single "god" protocol, SwiftTerm uses a composable delegate
+container: `TerminalDelegates`. You can provide only the components you
+need (output, window, color, clipboard, notifications, etc.). For
+backwards compatibility, you can still implement `TerminalDelegate`
+and pass it to `Terminal(delegate: ...)`, which populates all delegate
+slots in the container.
 
 ## MacOS NSView 
 The macOS AppKit NSView implementation [`TerminalView`](https://migueldeicaza.github.io/SwiftTermDocs/documentation/swiftterm/terminalview) is a reusable
@@ -191,6 +208,17 @@ swift test
 This clones the [esctest](https://github.com/migueldeicaza/esctest)
 repository (Python 3 branch) and enables the full terminal compliance
 test suite to run.
+
+Additional optional test inputs:
+
+- Fuzzer inputs: set `SWIFTTERM_FUZZER_DIR` or drop files under `Tests/Resources/Fuzzer/`
+- Performance blobs: set `SWIFTTERM_PERF_DATA` or place a blob at `Tests/Resources/Performance/vtebench.bin`
+
+Code coverage can be generated with:
+
+```
+swift test --enable-code-coverage
+```
 
 If using Xcode, you can select the "SwiftTerm" project, and then use Command-U 
 to run the test suite.

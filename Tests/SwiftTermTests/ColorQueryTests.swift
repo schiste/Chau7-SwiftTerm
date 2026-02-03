@@ -1,6 +1,7 @@
 import Testing
 @testable import SwiftTerm
 
+@MainActor
 final class ColorQueryTests {
     private final class TestDelegate: TerminalDelegate {
         var sent: [[UInt8]] = []

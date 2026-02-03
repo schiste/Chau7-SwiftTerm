@@ -2,6 +2,7 @@ import Testing
 @testable import SwiftTerm
 
 @Suite(.serialized)
+@MainActor
 struct KittyKeyboardTests {
     private func assertLastResponse(_ delegate: TerminalTestDelegate, equals expected: String) {
         guard let last = delegate.sentData.last, let response = String(bytes: last, encoding: .utf8) else {

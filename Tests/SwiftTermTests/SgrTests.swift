@@ -1,6 +1,7 @@
 import Testing
 @testable import SwiftTerm
 
+@MainActor
 final class SgrTests {
     private let esc = "\u{1b}"
 

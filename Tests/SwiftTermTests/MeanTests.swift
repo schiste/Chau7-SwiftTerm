@@ -12,6 +12,7 @@ import Testing
 
 @testable import SwiftTerm
 
+@MainActor
 final class MeanTests {
     
     func loadAndRun (d: Data)

@@ -10,6 +10,7 @@ import Testing
 @testable import SwiftTerm
 
 @Suite(.serialized)
+@MainActor
 final class SwiftTermUnicode {
     
     @Test func testCombiningCharacters() {

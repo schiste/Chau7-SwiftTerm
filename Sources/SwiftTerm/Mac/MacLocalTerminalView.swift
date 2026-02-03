@@ -174,6 +174,10 @@ open class LocalProcessTerminalView: TerminalView, TerminalViewDelegate, LocalPr
      * Implements the LocalProcessDelegate method.
      */
     open func processTerminated(_ source: LocalProcess, exitCode: Int32?) {
+        // Reset terminal state that the exiting process may have left behind
+        // (e.g. alt screen, custom cursor, bracketed paste, Kitty keyboard, etc.)
+        terminal.cleanupForProcessExit()
+        queuePendingDisplay()
         processDelegate?.processTerminated(source: self, exitCode: exitCode)
     }
     

@@ -6,6 +6,7 @@ import Testing
 import CoreGraphics
 @testable import SwiftTerm
 
+@MainActor
 final class KittyUnicodeTests {
 
     private func decodePlaceholders(line: BufferLine, row: Int, cols: Int, terminal: Terminal) -> [KittyPlaceholderCell] {

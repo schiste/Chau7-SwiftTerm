@@ -653,10 +653,103 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
     // doCommand/noop: - but more research needs to take place to figure out the priority
     // of those keys.
     //
+    /// Encodes a key event using CSI u / Kitty keyboard protocol when enhanced reporting is active.
+    /// Returns nil if the event should fall through to the legacy encoding path.
+    private func encodeKeyEventEnhanced(_ event: NSEvent) -> [UInt8]? {
+        let flags = event.modifierFlags
+
+        // Never intercept Cmd combos — let macOS handle copy/paste/quit/etc.
+        if flags.contains(.command) { return nil }
+
+        var mods: EscapeSequences.KeyModifiers = []
+        if flags.contains(.shift)   { mods.insert(.shift) }
+        if flags.contains(.option)  { mods.insert(.alt) }
+        if flags.contains(.control) { mods.insert(.ctrl) }
+
+        guard let chars = event.charactersIgnoringModifiers,
+              let scalar = chars.unicodeScalars.first else { return nil }
+
+        let c = Int(scalar.value)
+
+        // Arrow / Home / End — always encoded in enhanced mode (degrades to legacy when no mods)
+        switch c {
+        case NSUpArrowFunctionKey:    return EscapeSequences.csiArrow(suffix: 0x41, modifiers: mods)
+        case NSDownArrowFunctionKey:  return EscapeSequences.csiArrow(suffix: 0x42, modifiers: mods)
+        case NSRightArrowFunctionKey: return EscapeSequences.csiArrow(suffix: 0x43, modifiers: mods)
+        case NSLeftArrowFunctionKey:  return EscapeSequences.csiArrow(suffix: 0x44, modifiers: mods)
+        case NSHomeFunctionKey:       return EscapeSequences.csiArrow(suffix: 0x48, modifiers: mods)
+        case NSEndFunctionKey:        return EscapeSequences.csiArrow(suffix: 0x46, modifiers: mods)
+        default: break
+        }
+
+        // Function keys — F1-F4 use legacy unmodified, ESC[1;modX modified; F5-F12 use tilde format
+        switch c {
+        case NSF1FunctionKey:
+            return mods.isEmpty ? EscapeSequences.cmdF[0] : EscapeSequences.csiArrow(suffix: 0x50, modifiers: mods)
+        case NSF2FunctionKey:
+            return mods.isEmpty ? EscapeSequences.cmdF[1] : EscapeSequences.csiArrow(suffix: 0x51, modifiers: mods)
+        case NSF3FunctionKey:
+            return mods.isEmpty ? EscapeSequences.cmdF[2] : EscapeSequences.csiArrow(suffix: 0x52, modifiers: mods)
+        case NSF4FunctionKey:
+            return mods.isEmpty ? EscapeSequences.cmdF[3] : EscapeSequences.csiArrow(suffix: 0x53, modifiers: mods)
+        case NSF5FunctionKey:  return EscapeSequences.csiFunctional(number: 15, modifiers: mods)
+        case NSF6FunctionKey:  return EscapeSequences.csiFunctional(number: 17, modifiers: mods)
+        case NSF7FunctionKey:  return EscapeSequences.csiFunctional(number: 18, modifiers: mods)
+        case NSF8FunctionKey:  return EscapeSequences.csiFunctional(number: 19, modifiers: mods)
+        case NSF9FunctionKey:  return EscapeSequences.csiFunctional(number: 20, modifiers: mods)
+        case NSF10FunctionKey: return EscapeSequences.csiFunctional(number: 21, modifiers: mods)
+        case NSF11FunctionKey: return EscapeSequences.csiFunctional(number: 23, modifiers: mods)
+        case NSF12FunctionKey: return EscapeSequences.csiFunctional(number: 24, modifiers: mods)
+        default: break
+        }
+
+        // Editing keys — tilde format with modifiers
+        switch c {
+        case NSDeleteFunctionKey:  return EscapeSequences.csiFunctional(number: 3, modifiers: mods)
+        case NSInsertFunctionKey:  return EscapeSequences.csiFunctional(number: 2, modifiers: mods)
+        case NSPageUpFunctionKey:  return EscapeSequences.csiFunctional(number: 5, modifiers: mods)
+        case NSPageDownFunctionKey: return EscapeSequences.csiFunctional(number: 6, modifiers: mods)
+        default: break
+        }
+
+        // Special ASCII keys — CSI u only when modified
+        switch c {
+        case 13: // Return
+            if !mods.isEmpty { return EscapeSequences.csiU(keycode: 13, modifiers: mods) }
+            return nil
+        case 9: // Tab
+            if !mods.isEmpty { return EscapeSequences.csiU(keycode: 9, modifiers: mods) }
+            return nil
+        case 27: // Escape
+            if !mods.isEmpty { return EscapeSequences.csiU(keycode: 27, modifiers: mods) }
+            return nil
+        case 127: // Backspace
+            if !mods.isEmpty { return EscapeSequences.csiU(keycode: 127, modifiers: mods) }
+            return nil
+        default: break
+        }
+
+        // Regular printable characters with ctrl or alt → CSI u
+        if !mods.subtracting(.shift).isEmpty && c >= 32 && c < 0xF700 {
+            return EscapeSequences.csiU(keycode: c, modifiers: mods)
+        }
+
+        return nil
+    }
+
     public override func keyDown(with event: NSEvent) {
         selection.active = false
         let eventFlags = event.modifierFlags
-        
+
+        // When enhanced key reporting is active (Kitty protocol or modifyOtherKeys mode 2),
+        // encode keys with full modifier fidelity via CSI u before legacy handling.
+        if terminal.isEnhancedKeyReportingActive {
+            if let encoded = encodeKeyEventEnhanced(event) {
+                send(encoded)
+                return
+            }
+        }
+
         // Handle Option-letter to send the ESC sequence plus the letter as expected by terminals
         if eventFlags.contains ([.option, .command]) {
             if event.charactersIgnoringModifiers == "o" {
@@ -1365,7 +1458,7 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
             return nil
         case .maximizeWindowVertically:
             return nil
-        case .moveWindowTo(let newX, let newY):
+        case .moveWindowTo(_, _):
             return nil
         case .refreshWindow:
             return nil

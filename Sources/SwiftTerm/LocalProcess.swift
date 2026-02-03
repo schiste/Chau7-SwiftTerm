@@ -46,10 +46,11 @@ public protocol LocalProcessDelegate: AnyObject {
  * `send(data:)` method, and you will receive the output on the provided delegate with the
  * `dataReceived(slice:)` method.
  *
- * Received data is dispatched via the queue that you provide in the LocalProcess constructor, if none
+ * Received data is dispatched asynchronously via the queue that you provide in the LocalProcess constructor, if none
  * is provided, this will default to `DispatchQueue.main`.  Generally, this is a good default, but if you
  * have your own main loop or a different dispatching system, you will need to pass your own (for example,
- * the `HeadlessTerminal` implementation in the test suite does this.
+ * the `HeadlessTerminal` implementation in the test suite does this). Using async delivery prevents
+ * terminal parsing from blocking the IO read loop.
  *
  * The `terminate` call will send the `SIGTERM` signal to the child process.
  *
@@ -203,8 +204,8 @@ public class LocalProcess {
                 }
             }
         })
-        dispatchQueue.sync {
-            delegate?.dataReceived(slice: b[...])
+        dispatchQueue.async { [weak self] in
+            self?.delegate?.dataReceived(slice: b[...])
         }
         io?.read(offset: 0, length: readSize, queue: readQueue, ioHandler: childProcessRead)
     }
@@ -217,7 +218,10 @@ public class LocalProcess {
     {
         var n: Int32 = 0
         waitpid (shellPid, &n, WNOHANG)
-        delegate?.processTerminated(self, exitCode: n)
+        dispatchQueue.async { [weak self] in
+            guard let self else { return }
+            self.delegate?.processTerminated(self, exitCode: n)
+        }
         running = false
     }
     
@@ -313,7 +317,8 @@ public class LocalProcess {
                     )
                     
                     // Process completed
-                    await MainActor.run {
+                    dispatchQueue.async { [weak self] in
+                        guard let self else { return }
                         self.running = false
                         let exitCode: Int32?
                         switch result.terminationStatus {
@@ -326,8 +331,9 @@ public class LocalProcess {
                     }
                     
                 } catch {
-                    await MainActor.run {
-                        self.running = false  
+                    dispatchQueue.async { [weak self] in
+                        guard let self else { return }
+                        self.running = false
                         self.delegate?.processTerminated(self, exitCode: nil)
                     }
                     print("Failed to start process with swift-subprocess: \(error)")

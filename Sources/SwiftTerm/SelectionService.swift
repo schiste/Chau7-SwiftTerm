@@ -38,7 +38,7 @@ class SelectionService: CustomDebugStringConvertible {
         set(newValue) {
             if _active != newValue {
                 _active = newValue
-                terminal.tdel?.selectionChanged (source: terminal)
+                terminal.delegates.display?.selectionChanged(source: terminal)
             }
             if active == false {
                 pivot = nil
@@ -49,7 +49,7 @@ class SelectionService: CustomDebugStringConvertible {
     // This avoids the user visible cache
     func setActiveAndNotify () {
         _active = true
-        terminal.tdel?.selectionChanged (source: terminal)
+        terminal.delegates.display?.selectionChanged(source: terminal)
     }
 
     /**

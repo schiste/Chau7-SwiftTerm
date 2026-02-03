@@ -352,7 +352,7 @@ public class EscapeSequenceParser {
     func dispatchExecute(code: UInt8) {
         guard let terminal = terminal else { return }
         switch code {
-        case 7:    terminal.tdel?.bell(source: terminal)
+        case 7:    terminal.delegates.display?.bell(source: terminal)
         case 8:    terminal.cmdBackspace()
         case 9:    terminal.cmdTab()
         case 10:   terminal.cmdLineFeed()
@@ -524,7 +524,8 @@ public class EscapeSequenceParser {
         case 12:   terminal.oscSetColors(data, startAt: 2)
         case 52:   terminal.oscClipboard(data)
         case 104:  terminal.oscResetColor(data)
-        case 112:  terminal.tdel?.setCursorColor(source: terminal, color: nil)
+        case 112:  terminal.delegates.color?.setCursorColor(source: terminal, color: nil)
+        case 133:  terminal.oscSemanticPrompt(data)
         case 777:  terminal.oscNotification(data)
         case 1337: terminal.osciTerm2(data)
         default:

@@ -6,6 +6,7 @@ import Testing
 
 @testable import SwiftTerm
 
+@MainActor
 final class KittyRelativePlacementTests {
     private final class TestKittyImage: KittyPlacementImage {
         let pixelWidth: Int

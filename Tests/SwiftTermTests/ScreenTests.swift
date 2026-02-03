@@ -1,6 +1,7 @@
 import Testing
 @testable import SwiftTerm
 
+@MainActor
 final class ScreenTests {
     private func bufferLineText(_ buffer: Buffer, lineIndex: Int, terminal: Terminal? = nil) -> String {
         let characterProvider: ((CharData) -> Character)?

@@ -7,6 +7,7 @@ import Testing
 
 @testable import SwiftTerm
 
+@MainActor
 final class KittyCursorTests {
     private func makeHeadlessTerminal() -> HeadlessTerminal {
         HeadlessTerminal(queue: SwiftTermTests.queue, options: TerminalOptions(cols: 10, rows: 5)) { _ in }

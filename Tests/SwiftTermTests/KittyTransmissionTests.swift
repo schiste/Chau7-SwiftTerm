@@ -8,9 +8,10 @@ import Darwin
 
 @testable import SwiftTerm
 
+@MainActor
 final class KittyTransmissionTests {
     @_silgen_name("shm_open")
-    private static func swiftShmOpen(_ name: UnsafePointer<CChar>, _ oflag: Int32, _ mode: mode_t) -> Int32
+    private nonisolated static func swiftShmOpen(_ name: UnsafePointer<CChar>, _ oflag: Int32, _ mode: mode_t) -> Int32
 
     private func makeHeadlessTerminal() -> HeadlessTerminal {
         HeadlessTerminal(queue: SwiftTermTests.queue, options: TerminalOptions(cols: 10, rows: 5)) { _ in }
@@ -38,7 +39,7 @@ final class KittyTransmissionTests {
         try data.write(to: url)
     }
 
-    private static func createSharedMemory(name: String, bytes: [UInt8]) -> (ok: Bool, errorCode: Int32) {
+    private nonisolated static func createSharedMemory(name: String, bytes: [UInt8]) -> (ok: Bool, errorCode: Int32) {
         let fd = name.withCString { KittyTransmissionTests.swiftShmOpen($0, O_CREAT | O_EXCL | O_RDWR, 0o600) }
         guard fd >= 0 else {
             return (false, errno)
@@ -65,7 +66,7 @@ final class KittyTransmissionTests {
         return (true, 0)
     }
 
-    private static func sharedMemoryAvailable() -> Bool {
+    private nonisolated static func sharedMemoryAvailable() -> Bool {
         let name = "/swiftterm-kitty-\(UUID().uuidString)"
         let bytes: [UInt8] = [0]
         let result = createSharedMemory(name: name, bytes: bytes)

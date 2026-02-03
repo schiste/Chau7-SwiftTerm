@@ -11,6 +11,7 @@ import Testing
 
 @testable import SwiftTerm
 
+@MainActor
 final class ColorTests {
 
     @Test func testExtendedColor() {

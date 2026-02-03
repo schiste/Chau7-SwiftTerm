@@ -1,6 +1,7 @@
 import Testing
 @testable import SwiftTerm
 
+@MainActor
 final class TerminalCoreTests {
     private let esc = "\u{1b}"
 

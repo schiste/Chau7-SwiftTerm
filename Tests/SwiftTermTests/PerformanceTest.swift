@@ -10,8 +10,24 @@ import Testing
 import os
 @testable import SwiftTerm
 
+@MainActor
 final class PerformaceTests {
     let signposter = OSSignposter(subsystem: "SwiftTerm", category: .pointsOfInterest)
+
+    private func resolvePerfData() -> Data? {
+        let envPath = ProcessInfo.processInfo.environment["SWIFTTERM_PERF_DATA"]
+        let thisFile = URL(fileURLWithPath: #filePath)
+        let projectRoot = thisFile.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let resourcePath = projectRoot.appendingPathComponent("Tests/Resources/Performance/vtebench.bin").path
+
+        let candidates = [envPath, resourcePath].compactMap { $0 }
+        for path in candidates {
+            if let data = try? Data(contentsOf: URL(fileURLWithPath: path)) {
+                return data
+            }
+        }
+        return nil
+    }
 
     @Test func testPerformance() {
         let h = HeadlessTerminal (queue: SwiftTermTests.queue) { exitCode in }
@@ -56,8 +72,8 @@ final class PerformaceTests {
     }
 
     @Test func measureBigBlogFeed() {
-        guard let d = try? Data(contentsOf: URL(filePath: "/Users/miguel/cvs/vtebench/x")) else {
-            print("Skipping test, we do not have the data")
+        guard let d = resolvePerfData() else {
+            print("Skipping test, perf data not found. Set SWIFTTERM_PERF_DATA or add Tests/Resources/Performance/vtebench.bin.")
             return
         }
         let h = HeadlessTerminal (queue: SwiftTermTests.queue) { exitCode in }
@@ -80,8 +96,8 @@ final class PerformaceTests {
         // This file is generated with:
         // vtebench:
         // target/release/vtebench --max-samples 1 -b benchmarks/medium_cells/
-        guard let d = try? Data(contentsOf: URL(filePath: "/Users/miguel/cvs/vtebench/x")) else {
-            print("Skipping test, we do not have the data")
+        guard let d = resolvePerfData() else {
+            print("Skipping test, perf data not found. Set SWIFTTERM_PERF_DATA or add Tests/Resources/Performance/vtebench.bin.")
             return
         }
 
@@ -93,4 +109,3 @@ final class PerformaceTests {
 
 }
 #endif
-

@@ -10,265 +10,48 @@
 
 import Foundation
 
-/**
- * The terminal delegate is a protocol that must be implemented by a class
- * that would provide a user interface for the terminal, and it is used by the
- * `Terminal` to notify of important changes on the underlying terminal
- */
-public protocol TerminalDelegate: AnyObject {
-    /**
-     * Invoked to request that the cursor be shown
-     */
-    func showCursor (source: Terminal)
+// MARK: - OSC 133 Semantic Prompt Types
 
-    /**
-     * Invoked to request that the cursor be shown
-     */
-    func hideCursor (source: Terminal)
-
-    /**
-     * This method is invoked when the terminal needs to set the title for the window,
-     * a UI toolkit would react by setting the terminal title in the window or any other
-     * user visible element.
-     *
-     * The default implementation does nothing.
-     */
-    func setTerminalTitle (source: Terminal, title: String)
-
-    /**
-     * This method is invoked when the terminal needs to set the title for the minimized icon,
-     * a UI toolkit would react by setting the terminal title in the icon or any other
-     * user visible element
-     *
-     * The default implementation does nothing.
-     */
-    func setTerminalIconTitle (source: Terminal, title: String)
-
-    /**
-     * These are various commands that are sent by the client.  They are rare,
-     * and if you do not know what to return, just return nil, the terminal
-     * will return a suitable value.
-     *
-     * The response string needs to be suitable for the Xterm CSI Ps ; Ps ; Ps t command
-     * see the WindowManipulationCommand enumeration for those that need to return values
-     *
-     * The default implementation does nothing.
-     */
-    @discardableResult
-    func windowCommand (source: Terminal, command: Terminal.WindowManipulationCommand) -> [UInt8]?
-    
-    /**
-     * This method is invoked when the terminal dimensions have changed in response
-     * to an escape sequence that triggers a terminal resize, the user interface toolkit
-     * should attempt to accomodate the new window size
-     *
-     * TODO: This is not wired up
-     *
-     * The default implementation does nothing.
-     */
-    func sizeChanged (source: Terminal)
-    
-    /**
-     * Sends the byte data to the client connected to the terminal (in terminal emulation
-     * documentation, this is the "host")
-     */
-    func send (source: Terminal, data: ArraySlice<UInt8>)
-    
-    // callbacks
-    
-    /// Callback - the window was scrolled, new yDisplay passed
-    /// The default implementation does nothing.
-    func scrolled (source: Terminal, yDisp: Int)
-    
-    /// Callback a newline was generated
-    /// The default implementation does nothing.
-    func linefeed (source: Terminal)
-    
-    /// This method is invoked when the buffer changes from Normal to Alternate, or Alternate to Normal
-    /// The default implementation does nothing.
-    func bufferActivated (source: Terminal)
-
-    /// Invoked when synchronized output mode is toggled on or off.
-    /// The default implementation does nothing.
-    func synchronizedOutputChanged (source: Terminal, active: Bool)
-    
-    /// Should raise the bell
-    /// The default implementation does nothing.
-    func bell (source: Terminal)
-    
-    /**
-     * This is invoked when the selection has changed, or has been turned on.   The status is
-     * available in `terminal.selection.active`, and the range relative to the buffer is
-     * in `terminal.selection.start` and `terminal.selection.end`
-     *
-     * The default implementation does nothing.
-     */
-    func selectionChanged (source: Terminal)
-    
-    /**
-     * This method should return `true` if operations that can read the buffer back should be allowed,
-     * otherwise, return false.   This is useful to run some applications that attempt to checksum the
-     * contents of the screen (unit tests)
-     *
-     * The default implementation returns `true`
-     */
-    func isProcessTrusted (source: Terminal) -> Bool
-
-    /**
-     * Returns the cell size in pixels, if known.
-     *
-     * The default implementation returns nil.
-     */
-    func cellSizeInPixels (source: Terminal) -> (width: Int, height: Int)?
-    
-    /**
-     * This method is invoked when the `mouseMode` property has changed, and gives the UI
-     * a chance to update any tracking capabilities that are required in the toolkit or no longer
-     * required to provide the events.
-     *
-     * The default implementation ignores the mouse change
-     */
-    func mouseModeChanged (source: Terminal)
-    
-    /**
-     * This method is invoked when a request to change the cursor style has been issued
-     * by client application.
-     */
-    func cursorStyleChanged (source: Terminal, newStyle: CursorStyle)
-    
-    /**
-     * This method is invoked when the client application has issued a command to report
-     * its current working directory (this is done with the OSC 7 command).   The value can be
-     * read by accessing the `hostCurrentDirectory` property.
-     *
-     * The default implementaiton does nothing.
-     */
-    func hostCurrentDirectoryUpdated (source: Terminal)
-    
-    /**
-     * This method is invoked when the client application has issued a command to report
-     * its current document (this is done with the OSC 6 command).   The value can be
-     * read by accessing the `hostCurrentDocument` property.
-     *
-     * The default implementaiton does nothing.
-     */
-    func hostCurrentDocumentUpdated (source: Terminal)
-    
-    /**
-     * This method is invoked when a color in the 0..255 palette has been redefined, if the
-     * front-end keeps a cache or uses indexed rendering, it should update the color
-     * with the new values.   If the value of idx is nil, this means all the ansi colors changed
-     */
-    func colorChanged (source: Terminal, idx: Int?)
-    
-    /**
-     * The view should try to set the foreground color to the provided color
-     */
-    func setForegroundColor (source: Terminal, color: Color)
-    
-    /**
-     * The view should try to set the background color to the provided color
-     */
-    func setBackgroundColor (source: Terminal, color: Color)
-    
-    /**
-     * The view should try to set the cursor color to the provided color.   If color is nil, the view can use a default.
-     */
-    func setCursorColor (source: Terminal, color: Color?)
-    
-    /**
-     * This should return the current foreground and background colors to
-     * report.
-     */
-    func getColors (source: Terminal) -> (foreground: Color, background: Color)
-    
-    /**
-     * This method is invoked when the client application (iTerm2) has issued a OSC 1337 and
-     * SwiftTerm did not handle a handler for it.
-     *
-     * The default implementaiton does nothing.
-     */
-    func iTermContent (source: Terminal, content: ArraySlice<UInt8>)
-    
-    /**
-     * This method is invoked when the client application has issued a OSC 52
-     * to put data on the clipboard.
-     *
-     * - Parameters:
-     *  - source: identifies the instance of the terminal that sent this request
-     *  - content: the data to place on the clipboard
-     * The default implementation does nothing.
-     */
-    func clipboardCopy(source: Terminal, content: Data)
-    
-    /**
-     * Invoked when client application issues OSC 777 to show notification.
-     *
-     * The default implementation does nothing.
-     * - Parameters:
-     *  - source: identifies the instance of the terminal that sent this request
-     *  - title: the title to show for the notification
-     *  - body: the body of the notification
-     */
-    func notify(source: Terminal, title: String, body: String)
-
-    /**
-     * Invoked when the client application issues OSC 9;4 to report progress.
-     *
-     * The default implementation does nothing.
-     * - Parameters:
-     *  - source: identifies the instance of the terminal that sent this request
-     *  - report: the parsed progress report
-     */
-    func progressReport(source: Terminal, report: Terminal.ProgressReport)
-    
-    /**
-     * Invoked to create an image from an RGBA buffer at the current cursor position
-     *
-     * The default implementation does nothing.
-     * - Parameters:
-     *  - source: identifies the instance of the terminal that sent this request
-     *  - bytes: Image buffer in RGBA format, using 8 bits per channel.
-     *  - width: the width in pixels of the image
-     *  - height: the height in pixels of the image
-     */
-    func createImageFromBitmap (source: Terminal, bytes: inout [UInt8], width: Int, height: Int)
-    
-    /**
-     * Invoked to create an image from a byte blob that might be encoded in one of the various
-     * compressed file formats (unlike the other option that gets an RGBA buffer already decoded).
-     * It also included requests for the desired dimensions.
-     * - Parameters:
-     *  - source: identifies the instance of the terminal that sent this request
-     *  - data: Binary blob containing the image data, which is typically encoded as a PNG or JPEG file
-     *  - widthRequest: the width requested, it contains an enumeration describing what the request was
-     *  - height: the height requested, it contains an enumeration describing what the request was
-     *  - preserveAspectRatio: if set, one of the dimensions will track the hardcoded setting set for the other.
-     */
-    func createImage (source: Terminal, data: Data, width: ImageSizeRequest, height: ImageSizeRequest, preserveAspectRatio: Bool)
+/// Tracks the current phase of the shell prompt lifecycle (OSC 133).
+public enum SemanticPromptState {
+    /// No shell integration active, or between output-end and next prompt-start
+    case unknown
+    /// After prompt-start (A), before input-start (B) — prompt text is being displayed
+    case prompt
+    /// After input-start (B), before output-start (C) — user is typing a command
+    case input
+    /// After output-start (C), before output-end (D) — command output is flowing
+    case output
 }
 
-/// Enumeration passed to the TerminalDelegate.createImage to configure
-/// the desired values for width and height.
-public enum ImageSizeRequest {
-    /// Make the best decision based on the image data
-    case auto
-    /// Occupy exactly the number of cells
-    case cells(Int)
-    /// Occupy exactly the pixels listed
-    case pixels(Int)
-    /// Occupy a percentange size relative to the dimension of the visible region
-    case percent(Int)
+/// Per-line semantic type assigned by OSC 133 sequences.
+public enum SemanticLineType: UInt8 {
+    case none = 0
+    case promptStart = 1
+    case prompt = 2
+    case input = 3
+    case output = 4
+    case outputEnd = 5
 }
 
-public protocol TerminalImage {
-    /// The width of the image in pixels
-    var pixelWidth: Int { get }
-    /// The height of the image in pixels
-    var pixelHeight: Int { get }
-    
-    /// Column where the image was attached
-    var col: Int { get set }
+/// Kind of prompt, from the `kind=` parameter in OSC 133;A.
+public enum PromptKind {
+    case primary
+    case secondary
+    case right
+}
+
+/// A navigation mark stored by OSC 133 to support scroll-to-prompt and output selection.
+public struct PromptMark {
+    public enum MarkType {
+        case promptStart, inputStart, outputStart, outputEnd
+    }
+    public let type: MarkType
+    /// Absolute line index in the scrollback buffer
+    public let absoluteRow: Int
+    public let column: Int
+    public let exitCode: Int?
+    public let kind: PromptKind?
 }
 
 /**
@@ -282,8 +65,8 @@ public protocol TerminalImage {
  * The terminal is also connected to a backend that is conneted to the client, and data from this
  * client is fed into the emulator by calling the `sendResponse method`
  *
- * The behavior of the terminal is configured by implementing the `TerminalDelegate` protocol
- * that is provided in the constructor call.
+ * The behavior of the terminal is configured by supplying a `TerminalDelegates` container
+ * (or a unified `TerminalDelegate`) in the constructor call.
  */
 open class Terminal {
     public enum ProgressReportState: Int {
@@ -386,15 +169,33 @@ open class Terminal {
     /// the terminal, the content will be wrapped in "ESC [ 200 ~" to start, and "ESC [ 201 ~" to end.
     public private(set) var bracketedPasteMode: Bool = false
     
-    private var charset: [UInt8:String]? = nil
-    private var gCharsets: [[UInt8:String]?] = [CharSets.defaultCharset, nil, nil, nil]
+    var charset: [UInt8:String]? = nil
+    var gCharsets: [[UInt8:String]?] = [CharSets.defaultCharset, nil, nil, nil]
     var gcharset: Int = 0
     var reverseWraparound: Bool = false
-    weak var tdel: TerminalDelegate?
-    private var curAttr: Attribute = CharData.defaultAttr
-    private var charToIndexMap: [Character:Int32] = [:]
-    private var indexToCharMap: [Int32: Character] = [:]
-    private var lastCharIndex: Int32 = Int32(CharData.maxRune + 1)
+    /// Delegate container for terminal events.
+    public let delegates: TerminalDelegates
+    /// Queue that all terminal operations must run on.
+    public let dispatchQueue: DispatchQueue
+    private let dispatchQueueKey = DispatchSpecificKey<UInt8>()
+
+    @inline(__always)
+    private func assertOnQueue(_ function: StaticString = #function) {
+        #if DEBUG
+        if DispatchQueue.getSpecific(key: dispatchQueueKey) == nil {
+            assertionFailure("Terminal API called off its dispatchQueue in \(function). Use runOnQueue(_:) to schedule work.")
+        }
+        #endif
+    }
+
+    /// Schedule work on the terminal's dispatch queue.
+    public func runOnQueue(_ block: @escaping () -> Void) {
+        dispatchQueue.async(execute: block)
+    }
+    var curAttr: Attribute = CharData.defaultAttr
+    var charToIndexMap: [Character:Int32] = [:]
+    var indexToCharMap: [Int32: Character] = [:]
+    var lastCharIndex: Int32 = Int32(CharData.maxRune + 1)
     var gLevel: UInt8 = 0
     var cursorBlink: Bool = false
     
@@ -408,7 +209,19 @@ open class Terminal {
     private var kittyKeyboardStackMain: [Int] = []
     private var kittyKeyboardStackAlt: [Int] = []
     private let kittyKeyboardStackLimit = 32
-    
+
+    // MARK: - XTMODKEYS (xterm modifyOtherKeys)
+    //
+    // Tracks the xterm modifier-key reporting level set via CSI > Pp ; Pv m.
+    // Resource Pp=4 (modifyOtherKeys) is the one most commonly used by tools:
+    //   0 = disabled (default), 1 = basic, 2 = full (all modified keys report distinctly).
+    // When Kitty keyboard flags are non-zero, Kitty protocol takes precedence.
+    private var modifyOtherKeysLevel: Int = 0
+
+    // MARK: - OSC 133 Semantic Prompt State
+    private var semanticPromptState: SemanticPromptState = .unknown
+    private(set) var promptMarks: [PromptMark] = []
+
     var refreshStart = Int.max
     var refreshEnd = -1
     var scrollInvariantRefreshStart = Int.max
@@ -495,7 +308,7 @@ open class Terminal {
                 return
             }
             settingFgColor = true
-            tdel?.setForegroundColor(source: self, color: foregroundColor)
+            delegates.color?.setForegroundColor(source: self, color: foregroundColor)
             settingFgColor = false
         }
     }
@@ -506,7 +319,7 @@ open class Terminal {
                 return
             }
             settingBgColor = true
-            tdel?.setBackgroundColor(source: self, color: backgroundColor)
+            delegates.color?.setBackgroundColor(source: self, color: backgroundColor)
             settingBgColor = false
         }
     }
@@ -518,16 +331,17 @@ open class Terminal {
                 return
             }
             settingCursorColor = true
-            tdel?.setCursorColor(source: self, color: cursorColor)
+            delegates.color?.setCursorColor(source: self, color: cursorColor)
             settingCursorColor = false
         }
     }
     
     /// Invoke this command when the terminal receives and loses focus
     public func setTerminalFocus(_ focused: Bool) {
+        assertOnQueue()
         if sendFocus {
             let data: [UInt8] = cc.CSI + [focused ? 0x49 : 0x4f]
-            tdel?.send(source: self, data: data[0...])
+            delegates.output?.send(source: self, data: data[0...])
         }
     }
     
@@ -587,7 +401,7 @@ open class Terminal {
     
     public private(set) var mouseMode: MouseMode = .off {
         didSet {
-            tdel?.mouseModeChanged (source: self)
+            delegates.display?.mouseModeChanged(source: self)
         }
     }
 
@@ -611,16 +425,24 @@ open class Terminal {
     /// Returns the terminal dimensions 1-based values
     public func getDims () -> (cols: Int,rows: Int)
     {
+        assertOnQueue()
         return (cols, rows)
     }
     
-    public init (delegate: TerminalDelegate, options: TerminalOptions = TerminalOptions.default)
+    /// Primary initializer with explicit delegate container and dispatch queue.
+    /// - Parameters:
+    ///   - delegates: container with optional delegate components
+    ///   - options: terminal configuration
+    ///   - dispatchQueue: queue used for all terminal mutations and callbacks
+    public init (delegates: TerminalDelegates, options: TerminalOptions = TerminalOptions.default, dispatchQueue: DispatchQueue = DispatchQueue.main)
     {
         installedColors = Color.terminalAppColors
         defaultAnsiColors = Color.setupDefaultAnsiColors (initialColors: installedColors)
         ansiColors = defaultAnsiColors
-        tdel = delegate
+        self.delegates = delegates
+        self.dispatchQueue = dispatchQueue
         self.options = options
+        dispatchQueue.setSpecific(key: dispatchQueueKey, value: 1)
         // This duplicates the setup above, but
         parser = EscapeSequenceParser()
         normalBuffer = Buffer(cols: cols, rows: rows, tabStopWidth: tabStopWidth, scrollback: options.scrollback)
@@ -640,7 +462,13 @@ open class Terminal {
 
         setupTabStops()
 
-        setup()
+        setupInternal(isReset: false)
+    }
+
+    /// Convenience initializer for unified delegates.
+    public convenience init (delegate: TerminalDelegate, options: TerminalOptions = TerminalOptions.default, dispatchQueue: DispatchQueue = DispatchQueue.main)
+    {
+        self.init(delegates: TerminalDelegates(unified: delegate), options: options, dispatchQueue: dispatchQueue)
     }
 
     /// Installs the new colors as the default colors and recomputes the
@@ -652,6 +480,7 @@ open class Terminal {
     /// if the array does not contain 16 elements, it will not do anything
     public func installPalette (colors: [Color])
     {
+        assertOnQueue()
         if colors.count != 16 {
             return
         }
@@ -668,6 +497,7 @@ open class Terminal {
     ///
     public func getCharData (col: Int, row: Int) -> CharData?
     {
+        assertOnQueue()
         if col < 0 || col >= cols {
             return nil
         }
@@ -683,6 +513,7 @@ open class Terminal {
     /// - Parameter row: the row to retrieve, relative to the scroll buffer, not the visible display
     /// - Returns: nil if the col or row are out of bounds, or the BufferLine  otherwise
     public func getLine (row: Int) -> BufferLine? {
+        assertOnQueue()
         if row < 0 || row >= rows {
             return nil
         }
@@ -695,6 +526,7 @@ open class Terminal {
     /// - Parameter row: the row to retrieve, relative to the scroll buffer, not the visible display
     /// - Returns: nil if the col or row are out of bounds, or the BufferLine  otherwise
     public func getScrollInvariantLine (row: Int) -> BufferLine? {
+        assertOnQueue()
         if row < buffer.linesTop || row >= buffer.lines.count + buffer.linesTop {
             return nil
         }
@@ -708,6 +540,7 @@ open class Terminal {
     
     public func getCharacter (col: Int, row: Int) -> Character?
     {
+        assertOnQueue()
         guard let charData = getCharData(col: col, row: row) else {
             return nil
         }
@@ -715,6 +548,7 @@ open class Terminal {
     }
     
     public func resetNormalBuffer() {
+        assertOnQueue()
         normalBuffer = Buffer(cols: cols, rows: rows, tabStopWidth: tabStopWidth, scrollback: options.scrollback)
         normalBuffer.scroll = scroll(isWrapped:)
 
@@ -771,6 +605,12 @@ open class Terminal {
 
     }
     public func setup (isReset: Bool = false)
+    {
+        assertOnQueue()
+        setupInternal(isReset: isReset)
+    }
+
+    private func setupInternal(isReset: Bool)
     {
         // Sadly a duplicate of much of what lives in init() due to Swift not allowing me to
         // call this
@@ -887,44 +727,13 @@ open class Terminal {
         }
     }
 
-    // Configures the EscapeSequenceParser with fallback handlers and print handling
-    func configureParser (_ parser: EscapeSequenceParser)
-    {
-        parser.csiHandlerFallback = { [unowned self] (pars: [Int], collect: cstring, code: UInt8) -> () in
-            let ch = Character(UnicodeScalar(code))
-            self.log ("SwiftTerm: Unknown CSI Code (collect=\(collect) code=\(ch) pars=\(pars))")
-        }
-        parser.escHandlerFallback = { [unowned self] (txt: cstring, flag: UInt8) in
-            self.log ("SwiftTerm: Unknown ESC Code: ESC + \(Character(Unicode.Scalar (flag))) txt=\(txt)")
-        }
-        parser.executeHandlerFallback = { [unowned self] in
-            self.log ("SwiftTerm: Unknown EXECUTE code")
-        }
-        parser.oscHandlerFallback = { [unowned self] code, data in
-            self.log ("SwiftTerm: Unknown OSC code: \(code)")
-        }
-        parser.apcHandlerFallback = { [unowned self] code, data in
-            if let scalar = UnicodeScalar(Int(code)) {
-                self.log ("SwiftTerm: Unknown APC code: \(Character(scalar))")
-            } else {
-                self.log ("SwiftTerm: Unknown APC code: \(code)")
-            }
-        }
-        parser.printHandler = { [unowned self] slice in handlePrint (slice) }
-        parser.printStateReset = { [unowned self] in printStateReset() }
-
-        parser.errorHandler = { [unowned self] state in
-            self.log ("SwiftTerm: Parsing error, state: \(state)")
-            return state
-        }
-    }
-    
     /// This allows users of the terminal to register a handler for an OSC code.
     /// - Parameters:
     ///  - code: the code for the OSC handler to register, no checks are made that this overrides an existing handler
     ///  - handler: the code to invoke when the OSC handler is received.
     public func registerOscHandler (code: Int, handler: @escaping (ArraySlice<UInt8>) -> ())
     {
+        assertOnQueue()
         parser.oscHandlers [code] = handler
     }
     
@@ -961,264 +770,10 @@ open class Terminal {
     // Additionally, the terminal parser needs to reset the parser state on demand, and
     // that is surfaced via reset
     //
-    private struct ReadingBuffer {
-        var putbackBuffer: [UInt8] = []
-        var rest:ArraySlice<UInt8> = [][...]
-        var idx = 0
-        var count:Int = 0
-        
-        // Invoke this method at the beginning of parse
-        mutating func prepare (_ data: ArraySlice<UInt8>)
-        {
-            assert (rest.count == 0)
-            rest = data
-            count = putbackBuffer.count + data.count
-            idx = 0
-        }
-        
-        func hasNext () -> Bool {
-            idx < count
-        }
-        
-        func bytesLeft () -> Int
-        {
-            count-idx
-        }
-        
-        mutating func getNext () -> UInt8
-        {
-            if idx < putbackBuffer.count {
-                let v = putbackBuffer [idx]
-                idx += 1
-                return v
-            }
-            let v = rest [idx-putbackBuffer.count+rest.startIndex]
-            idx += 1
-            return v
-        }
-        
-        // Puts back the code, and everything that was pending
-        mutating func putback (_ code: UInt8)
-        {
-            var newPutback: [UInt8] = [code]
-            let left = bytesLeft()
-            for _ in 0..<left {
-                newPutback.append (getNext ())
-            }
-            putbackBuffer = newPutback
-            rest = [][...]
-        }
-        
-        mutating func done  ()
-        {
-            if idx < putbackBuffer.count {
-                putbackBuffer.removeFirst(idx)
-            } else {
-                putbackBuffer = []
-            }
-            rest = [][...]
-        }
-        
-        mutating func reset ()
-        {
-            putbackBuffer = []
-            idx = 0
-        }
-    }
-    
-    private var readingBuffer = ReadingBuffer ()
-    
-    func printStateReset ()
-    {
-        readingBuffer.reset ()
-    }
-    
+    var readingBuffer = ReadingBuffer ()
+
     // TODO: was this unused
     var lastBufferCol: Int = 0
-    
-    func handlePrint (_ data: ArraySlice<UInt8>)
-    {
-        let buffer = self.buffer
-        readingBuffer.prepare(data)
-
-        updateRange(borrowing: buffer, buffer.y)
-        while readingBuffer.hasNext() {
-            var ch: Character = " "
-            var chWidth: Int = 0
-            let code = readingBuffer.getNext()
-            
-            let n = UnicodeUtil.expectedSizeFromFirstByte(code)
-
-            if n == -1 || n == 1 {
-                // n == -1 means an Invalid UTF-8 sequence, client sent us some junk, happens if we run
-                // with the wrong locale set for example if LANG=en, still we handle it here
-
-                // get charset replacement character
-                // charset are only defined for ASCII, therefore we only
-                // search for an replacement char if code < 127
-                if code < 127 && charset != nil {
-                    
-                    // Notice that the charset mapping can contain the dutch unicode sequence for "ij",
-                    // so it is not a simple byte, it is a Character
-                    if let str = charset! [UInt8 (code)] {
-                        ch = str.first!
-                        
-                        // Every single mapping in the charset only takes one slot
-                        chWidth = 1
-                        let charData = makeCharData (attribute: curAttr, char: ch, size: Int8 (chWidth))
-                        buffer.insertCharacter(charData)
-                        continue
-                    }
-                }
-                
-                let rune = UnicodeScalar (code)
-                chWidth = UnicodeUtil.columnWidth(rune: rune)
-		if chWidth > 0 {
-                	let charData = makeCharData (attribute: curAttr, scalar: rune, size: Int8 (chWidth))
-                	buffer.insertCharacter(charData)
-		}
-                continue
-            } else if readingBuffer.bytesLeft() >= (n-1) {
-                var x : [UInt8] = [code]
-                for _ in 1..<n {
-                    x.append (readingBuffer.getNext())
-                }
-
-                var iterator = x.makeIterator()
-                var decoder = UTF8()
-                switch decoder.decode(&iterator) {
-                case .scalarValue(let scalar):
-                    ch = Character(scalar)
-                default:
-                    // Invalid UTF-8 sequence, fall back to interpreting the first byte
-                    let rune = UnicodeScalar(code)
-                    chWidth = UnicodeUtil.columnWidth(rune: rune)
-                    if chWidth > 0 {
-                    	let charData = makeCharData (attribute: curAttr, scalar: rune, size: Int8 (chWidth))
-                    	buffer.insertCharacter(charData)
-		    }
-                    continue
-                }
-
-                // Now the challenge is that we have a character, not a rune, and we want to compute
-                // the width of it.
-                if ch.unicodeScalars.count == 1 {
-                    chWidth = UnicodeUtil.columnWidth(rune: ch.unicodeScalars.first!)
-                } else {
-                    chWidth = 0
-                    for scalar in ch.unicodeScalars {
-                        let width = UnicodeUtil.columnWidth(rune: scalar)
-                        if width < 0 {
-                            chWidth = -1
-                            break
-                        }
-                        chWidth = max (chWidth, width)
-                    }
-                }
-            } else {
-                readingBuffer.putback (code)
-                return
-            }
-
-            if chWidth < 0 {
-                continue
-            }
-
-            if let firstScalar = ch.unicodeScalars.first {
-                // Check if we should try to combine this character with the previous one.
-                // This applies to:
-                // 1. Unicode combining characters (diacritics, etc.)
-                // 2. Emoji skin tone modifiers (e.g., 🖐 + 🏾 = 🖐🏾)
-                // 3. Zero Width Joiner (ZWJ) for emoji sequences (e.g., 👩 + ZWJ + 👩 + ZWJ + 👦 = 👩‍👩‍👦)
-                // 4. Variation selectors (e.g., U+FE0F for emoji presentation of ❤️)
-                // 5. Any character following a ZWJ (to complete the sequence)
-                var shouldTryCombine = chWidth == 0 ||
-                                       firstScalar.properties.canonicalCombiningClass != .notReordered ||
-                                       firstScalar.properties.isEmojiModifier ||
-                                       firstScalar.properties.isVariationSelector ||
-                                       firstScalar.value == 0x200D  // ZWJ
-
-                // Also check if the previous character ends with ZWJ - if so, we should combine
-                if !shouldTryCombine {
-                    let last = buffer.lastBufferStorage
-                    if last.cols == cols && last.rows == rows {
-                        let existingLine = buffer.lines [last.y]
-                        let lastx = last.x >= cols ? cols-1 : last.x
-                        let lastChar = getCharacter (for: existingLine [lastx])
-                        if lastChar.unicodeScalars.last?.value == 0x200D {
-                            shouldTryCombine = true
-                        }
-                    }
-                }
-
-                if shouldTryCombine {
-                    // Determine if the last time we poked at a character is still valid
-                    let last = buffer.lastBufferStorage
-                    if last.cols == cols && last.rows == rows {
-                        // Fetch the old character, and attempt to combine it:
-                        let existingLine = buffer.lines [last.y]
-                        let lastx = last.x >= cols ? cols-1 : last.x
-                        var cd = existingLine [lastx]
-
-                        // Attempt the combination
-                        let newStr = String ([getCharacter (for: cd), ch])
-
-                        // If the resulting string is 1 grapheme cluster, then it combined properly
-                        if newStr.count == 1 {
-                            if let newCh = newStr.first {
-                                let oldSize = cd.width
-                                let isVs16 = firstScalar.value == 0xFE0F
-                                let isVs15 = firstScalar.value == 0xFE0E
-                                let needsEmojiVariationCheck = isVs16 || isVs15
-                                if needsEmojiVariationCheck {
-                                    let baseScalar = getCharacter(for: cd).unicodeScalars.last
-                                    if baseScalar == nil || !UnicodeUtil.isEmojiVs16Base(rune: baseScalar!) {
-                                        continue
-                                    }
-                                }
-                                if isVs16 {
-                                    if oldSize != 2 && lastx + 1 < cols {
-                                        updateCharData(&cd, char: newCh, size: 2)
-                                        let nextX = lastx + 1
-                                        let empty = makeCharData (attribute: cd.attribute, code: 0, size: 0)
-                                        existingLine [nextX] = empty
-                                        buffer.x += 1
-                                    } else {
-                                        updateCharData(&cd, char: newCh, size: Int32(oldSize))
-                                    }
-                                } else if isVs15 {
-                                    updateCharData(&cd, char: newCh, size: 1)
-                                    if oldSize == 2 && buffer.x > 0 {
-                                        buffer.x -= 1
-                                    }
-                                } else {
-                                    updateCharData(&cd, char: newCh, size: Int32 (cd.width))
-                                    if cd.width != oldSize {
-                                        buffer.x += 1
-                                    }
-                                }
-                                existingLine [lastx] = cd
-                                updateRange(borrowing: buffer, last.y)
-                                continue
-                            }
-                        }
-                    }
-                }
-            }
-            if chWidth == 0 {
-                continue
-            }
-            // The accessibility stack might not need this
-            //let screenReaderMode = options.screenReaderMode
-            //if screenReaderMode {
-            //    emitChar (ch)
-            //}
-            let charData = makeCharData (attribute: curAttr, char: ch, size: Int8 (chWidth))
-            buffer.insertCharacter(charData)
-        }
-        updateRange(borrowing: buffer, buffer.y)
-        readingBuffer.done ()
-    }
 
     private func code (for char: Character) -> Int32
     {
@@ -1251,31 +806,37 @@ open class Terminal {
 
     public func getCharacter (for charData: CharData) -> Character
     {
+        assertOnQueue()
         return character (for: charData.code)
     }
 
     public func makeCharData (attribute: Attribute, code: Int32, size: Int8 = 1) -> CharData
     {
+        assertOnQueue()
         return CharData (attribute: attribute, code: code, size: size)
     }
 
     public func makeCharData (attribute: Attribute, char: Character, size: Int8 = 1) -> CharData
     {
+        assertOnQueue()
         return makeCharData (attribute: attribute, code: code (for: char), size: size)
     }
 
     public func makeCharData (attribute: Attribute, scalar: UnicodeScalar, size: Int8 = 1) -> CharData
     {
+        assertOnQueue()
         return makeCharData (attribute: attribute, code: Int32 (scalar.value), size: size)
     }
 
     public func updateCharData (_ charData: inout CharData, char: Character, size: Int32)
     {
+        assertOnQueue()
         charData.setValue (code: code (for: char), size: size)
     }
 
     public func updateCharData (_ charData: inout CharData, code: Int32, size: Int32)
     {
+        assertOnQueue()
         charData.setValue (code: code, size: size)
     }
     
@@ -1480,7 +1041,7 @@ open class Terminal {
     func resetAllColors ()
     {
         ansiColors = defaultAnsiColors
-        tdel?.colorChanged (source: self, idx: nil)
+        delegates.color?.colorChanged(source: self, idx: nil)
     }
     
     func resetColor (_ number: Int)
@@ -1489,7 +1050,7 @@ open class Terminal {
             return
         }
         ansiColors [number] = defaultAnsiColors [number]
-        tdel?.colorChanged(source: self, idx: number)
+        delegates.color?.colorChanged(source: self, idx: number)
     }
     
     func oscResetColor (_ data: ArraySlice<UInt8>)
@@ -1509,7 +1070,7 @@ open class Terminal {
     // Implements OSC 7 ; URL which records the current working directory
     func oscSetCurrentDirectory (_ data: ArraySlice<UInt8>)
     {
-        if !(tdel?.isProcessTrusted(source: self) ?? false) {
+        if !(delegates.trust?.isProcessTrusted(source: self) ?? false) {
             return
         }
         var s = String (bytes:data, encoding: .utf8)
@@ -1518,14 +1079,14 @@ open class Terminal {
         }
         if let txt = s {
             hostCurrentDirectory = txt
-            tdel?.hostCurrentDirectoryUpdated (source: self)
+            delegates.hostInfo?.hostCurrentDirectoryUpdated(source: self)
         }
     }
     
     // Implements OSC 6 ; URL which records the current document
     func oscSetCurrentDocument (_ data: ArraySlice<UInt8>)
     {
-        if !(tdel?.isProcessTrusted(source: self) ?? false) {
+        if !(delegates.trust?.isProcessTrusted(source: self) ?? false) {
             return
         }
         var s = String (bytes:data, encoding: .utf8)
@@ -1534,7 +1095,7 @@ open class Terminal {
         }
         if let txt = s {
             hostCurrentDocument = txt
-            tdel?.hostCurrentDocumentUpdated (source: self)
+            delegates.hostInfo?.hostCurrentDocumentUpdated(source: self)
         }
     }
 
@@ -1590,7 +1151,7 @@ open class Terminal {
             return
         }
         
-        tdel?.clipboardCopy(source: self, content: content)
+        delegates.clipboard?.clipboardCopy(source: self, content: content)
     }
     
     // Notifications:
@@ -1608,7 +1169,161 @@ open class Terminal {
         
         let title = parts[1]
         let body = parts[2...].joined(separator: ";")
-        tdel?.notify(source: self, title: title, body: body)
+        delegates.notification?.notify(source: self, title: title, body: body)
+    }
+
+    // MARK: - OSC 133 Semantic Prompt (Shell Integration)
+
+    /// Handles OSC 133 sequences for shell integration.
+    /// The data slice contains everything after "133;" — typically "A", "B", "C", or "D;exitcode".
+    func oscSemanticPrompt(_ data: ArraySlice<UInt8>) {
+        guard let text = String(bytes: data, encoding: .utf8) else { return }
+
+        // Ignore on alternate screen — shell integration is only for the normal buffer
+        guard !isCurrentBufferAlternate else { return }
+
+        let parts = text.split(separator: ";", maxSplits: 1)
+        guard let command = parts.first, command.count == 1 else { return }
+        let params = parts.count > 1 ? String(parts[1]) : nil
+
+        let absoluteRow = buffer.linesTop + buffer.yBase + buffer.y
+        let col = buffer.x
+
+        switch command {
+        case "A":
+            semanticPromptState = .prompt
+            let kind = parsePromptKind(params)
+            let line = buffer.lines[buffer.yBase + buffer.y]
+            line.semanticType = .promptStart
+            promptMarks.append(PromptMark(
+                type: .promptStart,
+                absoluteRow: absoluteRow,
+                column: col,
+                exitCode: nil,
+                kind: kind
+            ))
+            delegates.semanticPrompt?.semanticPromptChanged(source: self, state: .prompt)
+
+        case "B":
+            semanticPromptState = .input
+            let line = buffer.lines[buffer.yBase + buffer.y]
+            line.semanticType = .input
+            promptMarks.append(PromptMark(
+                type: .inputStart,
+                absoluteRow: absoluteRow,
+                column: col,
+                exitCode: nil,
+                kind: nil
+            ))
+            delegates.semanticPrompt?.semanticPromptChanged(source: self, state: .input)
+
+        case "C":
+            semanticPromptState = .output
+            let line = buffer.lines[buffer.yBase + buffer.y]
+            line.semanticType = .output
+            promptMarks.append(PromptMark(
+                type: .outputStart,
+                absoluteRow: absoluteRow,
+                column: col,
+                exitCode: nil,
+                kind: nil
+            ))
+            delegates.semanticPrompt?.semanticPromptChanged(source: self, state: .output)
+
+        case "D":
+            let exitCode: Int?
+            if let params, let code = Int(params) {
+                exitCode = code
+            } else {
+                exitCode = nil
+            }
+            semanticPromptState = .unknown
+            let line = buffer.lines[buffer.yBase + buffer.y]
+            line.semanticType = .outputEnd
+            promptMarks.append(PromptMark(
+                type: .outputEnd,
+                absoluteRow: absoluteRow,
+                column: col,
+                exitCode: exitCode,
+                kind: nil
+            ))
+            delegates.semanticPrompt?.commandCompleted(source: self, exitCode: exitCode)
+
+        default:
+            break
+        }
+    }
+
+    private func parsePromptKind(_ params: String?) -> PromptKind? {
+        guard let params else { return nil }
+        // Parse key=value pairs: "kind=secondary;aid=123"
+        for pair in params.split(separator: ";") {
+            let kv = pair.split(separator: "=", maxSplits: 1)
+            if kv.count == 2 && kv[0] == "kind" {
+                switch kv[1] {
+                case "secondary": return .secondary
+                case "right": return .right
+                default: return .primary
+                }
+            }
+        }
+        return nil
+    }
+
+    /// Returns the current semantic prompt state for shell integration
+    public var currentSemanticPromptState: SemanticPromptState {
+        semanticPromptState
+    }
+
+    /// Returns the current xterm modifyOtherKeys level (0 = off, 1 = basic, 2 = full).
+    /// When the Kitty keyboard protocol is active (flags != 0), it takes precedence.
+    public var currentModifyOtherKeysLevel: Int {
+        modifyOtherKeysLevel
+    }
+
+    /// Returns the current Kitty keyboard protocol flags for the active buffer.
+    /// 0 means the protocol is not active. Non-zero indicates the bitmask of enabled features:
+    /// 0x1 = disambiguate, 0x2 = report event types, 0x4 = report alternate keys,
+    /// 0x8 = report all keys, 0x10 = report associated text.
+    public var currentKittyKeyboardProtocolFlags: Int {
+        currentKittyKeyboardFlags()
+    }
+
+    /// Returns true if enhanced key reporting is active (either Kitty protocol or modifyOtherKeys mode 2).
+    /// The view layer should check this to decide whether to use CSI u encoding for key events.
+    public var isEnhancedKeyReportingActive: Bool {
+        currentKittyKeyboardFlags() != 0 || modifyOtherKeysLevel >= 2
+    }
+
+    /// Returns the semantic type for a given line in the visible viewport
+    public func semanticTypeForLine(_ row: Int) -> SemanticLineType {
+        let index = buffer.yDisp + row
+        guard index >= 0, index < buffer.lines.count else { return .none }
+        return buffer.lines[index].semanticType
+    }
+
+    /// Finds the previous prompt-start line from the given viewport row, for scroll-to-prompt navigation.
+    /// Returns the absolute row index, or nil if no previous prompt found.
+    public func previousPromptLine(from viewportRow: Int) -> Int? {
+        let absRow = buffer.yDisp + viewportRow
+        for mark in promptMarks.reversed() {
+            if mark.type == .promptStart && mark.absoluteRow < absRow {
+                return mark.absoluteRow
+            }
+        }
+        return nil
+    }
+
+    /// Finds the next prompt-start line from the given viewport row.
+    /// Returns the absolute row index, or nil if no next prompt found.
+    public func nextPromptLine(from viewportRow: Int) -> Int? {
+        let absRow = buffer.yDisp + viewportRow
+        for mark in promptMarks {
+            if mark.type == .promptStart && mark.absoluteRow > absRow {
+                return mark.absoluteRow
+            }
+        }
+        return nil
     }
 
     @discardableResult
@@ -1617,7 +1332,7 @@ open class Terminal {
             return false
         }
 
-        tdel?.progressReport(source: self, report: report)
+        delegates.progress?.progressReport(source: self, report: report)
         return true
     }
 
@@ -1734,13 +1449,13 @@ open class Terminal {
             let width = parseDimension (kv, key: "width")
             let height = parseDimension (kv, key: "height")
 
-            tdel?.createImage(source: self, data: imgData, width: width, height: height, preserveAspectRatio: (kv ["preserveAspectRatio"] ?? "1" ) == "1")
+            delegates.image?.createImage(source: self, data: imgData, width: width, height: height, preserveAspectRatio: (kv ["preserveAspectRatio"] ?? "1" ) == "1")
             return
         default:
             break
         }
         
-        tdel?.iTermContent(source: self, content: data)
+        delegates.iterm?.iTermContent(source: self, content: data)
     }
     
     // OSC 4
@@ -1775,7 +1490,7 @@ open class Terminal {
             
             if let newColor = Color.parseColor (data [parsePos..<end]) {
                 ansiColors [color] = newColor
-                tdel?.colorChanged (source: self, idx: color)
+                delegates.color?.colorChanged(source: self, idx: color)
             }
             parsePos = end+1
         }
@@ -1800,7 +1515,7 @@ open class Terminal {
         guard !groups.isEmpty else {
             return
         }
-        let reportedColors = tdel?.getColors(source: self)
+        let reportedColors = delegates.color?.getColors(source: self)
         let queryForeground = reportedColors?.foreground ?? foregroundColor
         let queryBackground = reportedColors?.background ?? backgroundColor
         for (offset, text) in groups.enumerated() {
@@ -1827,13 +1542,13 @@ open class Terminal {
             switch target {
             case 0:
                 foregroundColor = color
-                tdel?.setForegroundColor(source: self, color: color)
+                delegates.color?.setForegroundColor(source: self, color: color)
             case 1:
                 backgroundColor = color
-                tdel?.setBackgroundColor(source: self, color: color)
+                delegates.color?.setBackgroundColor(source: self, color: color)
             case 2:
                 cursorColor = color
-                tdel?.setCursorColor(source: self, color: color)
+                delegates.color?.setCursorColor(source: self, color: color)
                 break
             default:
                 break
@@ -1844,7 +1559,7 @@ open class Terminal {
     func oscSetTextBackground (_ data: ArraySlice<UInt8>)
     {
         if data.first == UInt8 (ascii: "?") {
-            let reportedColors = tdel?.getColors(source: self)
+            let reportedColors = delegates.color?.getColors(source: self)
             let queryBackground = reportedColors?.background ?? backgroundColor
             reportColor (oscCode: 11, color: queryBackground)
             return
@@ -1852,7 +1567,7 @@ open class Terminal {
 
         if let background = Color.parseColor(data) {
             backgroundColor = background
-            tdel?.setBackgroundColor(source: self, color: background)
+            delegates.color?.setBackgroundColor(source: self, color: background)
         }
     }
 
@@ -1860,7 +1575,7 @@ open class Terminal {
     {
         if let cursorColor = Color.parseColor(data) {
             self.cursorColor = cursorColor
-            tdel?.setCursorColor(source: self, color: cursorColor)
+            delegates.color?.setCursorColor(source: self, color: cursorColor)
         }
     }
 
@@ -2637,7 +2352,7 @@ open class Terminal {
         let rid = pars.count > 0 ? pars [0] : 1
         let _ = pars.count > 1 ? pars [1] : 0
         var result = "0000"
-        if (tdel?.isProcessTrusted(source: self) ?? false) && pars.count > 2 {
+        if (delegates.trust?.isProcessTrusted(source: self) ?? false) && pars.count > 2 {
             if let (top, left, bottom, right) = getRectangleFromRequest(pars [2...]) {
                 for row in top...bottom {
                     let line = buffer.lines [row+buffer.yBase]
@@ -2851,79 +2566,79 @@ open class Terminal {
     // list of commans for this escape sequence
     func cmdWindowOptions (_ pars: [Int])
     {
-        guard let tdel = self.tdel else {
+        guard let window = delegates.window else {
             return
         }
         switch pars {
         case [1]:
-            tdel.windowCommand(source: self, command: .deiconifyWindow)
+            window.windowCommand(source: self, command: .deiconifyWindow)
         case [2]:
-            tdel.windowCommand(source: self, command: .iconifyWindow)
+            window.windowCommand(source: self, command: .iconifyWindow)
         case _ where pars.count == 3 && pars.first == 3:
-            tdel.windowCommand(source: self, command: .moveWindowTo(x: pars [1], y: pars[2]))
+            window.windowCommand(source: self, command: .moveWindowTo(x: pars [1], y: pars[2]))
         case _ where pars.count == 3 && pars.first == 4:
-            tdel.windowCommand(source: self, command: .moveWindowTo(x: pars [1], y: pars[2]))
+            window.windowCommand(source: self, command: .moveWindowTo(x: pars [1], y: pars[2]))
         case [5]:
-            tdel.windowCommand(source: self, command: .bringToFront)
+            window.windowCommand(source: self, command: .bringToFront)
         case [6]:
-            tdel.windowCommand(source: self, command: .sendToBack)
+            window.windowCommand(source: self, command: .sendToBack)
         case [7]:
-            tdel.windowCommand(source: self, command: .refreshWindow)
+            window.windowCommand(source: self, command: .refreshWindow)
         case _ where pars.count == 3 && pars.first == 8:
-            tdel.windowCommand(source: self, command: .resizeTo(cols: pars [1], rows: pars [2]))
+            window.windowCommand(source: self, command: .resizeTo(cols: pars [1], rows: pars [2]))
         case [9, 0]:
-            tdel.windowCommand(source: self, command: .restoreMaximizedWindow)
+            window.windowCommand(source: self, command: .restoreMaximizedWindow)
         case [9, 1]:
-            tdel.windowCommand(source: self, command: .maximizeWindow)
+            window.windowCommand(source: self, command: .maximizeWindow)
         case [9, 2]:
-            tdel.windowCommand(source: self, command: .maximizeWindowVertically)
+            window.windowCommand(source: self, command: .maximizeWindowVertically)
         case [9, 3]:
-            tdel.windowCommand(source: self, command: .maximizeWindowHorizontally)
+            window.windowCommand(source: self, command: .maximizeWindowHorizontally)
         case [10, 0]:
-            tdel.windowCommand(source: self, command: .undoFullScreen)
+            window.windowCommand(source: self, command: .undoFullScreen)
         case [10, 1]:
-            tdel.windowCommand(source: self, command: .switchToFullScreen)
+            window.windowCommand(source: self, command: .switchToFullScreen)
         case [10, 2]:
-            tdel.windowCommand(source: self, command: .toggleFullScreen)
+            window.windowCommand(source: self, command: .toggleFullScreen)
         case [14]:
-            if let r = tdel.windowCommand(source: self, command: .reportTextAreaPixelDimension) {
+            if let r = window.windowCommand(source: self, command: .reportTextAreaPixelDimension) {
                 sendResponse(r)
             } else {
-                let cellSize = tdel.cellSizeInPixels(source: self) ?? (width: 10, height: 16)
+                let cellSize = window.cellSizeInPixels(source: self) ?? (width: 10, height: 16)
                 sendResponse(cc.CSI, "4;\(rows * cellSize.height);\(cols * cellSize.width)t")
             }
         case [14, 2]:
-            if let r = tdel.windowCommand(source: self, command: .reportTerminalWindowPixelDimension) {
+            if let r = window.windowCommand(source: self, command: .reportTerminalWindowPixelDimension) {
                 sendResponse(r)
             } else {
-                let cellSize = tdel.cellSizeInPixels(source: self) ?? (width: 10, height: 16)
+                let cellSize = window.cellSizeInPixels(source: self) ?? (width: 10, height: 16)
                 sendResponse(cc.CSI, "4;\(rows * cellSize.height);\(cols * cellSize.width)t")
             }
         case [15]: // Report size in pixels
-            if let r = tdel.windowCommand(source: self, command: .reportSizeOfScreenInPixels) {
+            if let r = window.windowCommand(source: self, command: .reportSizeOfScreenInPixels) {
                 sendResponse(r)
             } else {
-                let cellSize = tdel.cellSizeInPixels(source: self) ?? (width: 10, height: 16)
+                let cellSize = window.cellSizeInPixels(source: self) ?? (width: 10, height: 16)
                 sendResponse(cc.CSI, "5;\(rows * cellSize.height);\(cols * cellSize.width)t")
             }
         case [16]: // Report cell size in pixels
             // If no value is returned send 16x10
             // TODO: should surface that to the UI, should not do this here
-            if let r = tdel.windowCommand(source: self, command: .reportCellSizeInPixels) {
+            if let r = window.windowCommand(source: self, command: .reportCellSizeInPixels) {
                 sendResponse(r)
-            } else if let cellSize = tdel.cellSizeInPixels(source: self) {
+            } else if let cellSize = window.cellSizeInPixels(source: self) {
                 sendResponse(cc.CSI, "6;\(cellSize.height);\(cellSize.width)t")
             } else {
                 sendResponse (cc.CSI, "6;16;10t")
             }
         case [18]:
-            if let r = tdel.windowCommand(source: self, command: .reportTextAreaCharacters) {
+            if let r = window.windowCommand(source: self, command: .reportTextAreaCharacters) {
                 sendResponse(r)
             } else {
                 sendResponse(cc.CSI, "8;\(rows);\(cols)t")
             }
         case [19]:
-            if let r = tdel.windowCommand(source: self, command: .reportScreenSizeCharacters) {
+            if let r = window.windowCommand(source: self, command: .reportScreenSizeCharacters) {
                 sendResponse(r)
             } else {
                 sendResponse(cc.CSI, "9;\(rows);\(cols)t")
@@ -3029,8 +2744,9 @@ open class Terminal {
 
     public func setCursorStyle (_ style: CursorStyle)
     {
+        assertOnQueue()
         if options.cursorStyle != style {
-            tdel?.cursorStyleChanged(source: self, newStyle: style)
+            delegates.display?.cursorStyleChanged(source: self, newStyle: style)
             options.cursorStyle = style
         }
     }
@@ -3174,6 +2890,9 @@ open class Terminal {
                 res = bracketedPasteMode ? modeSet : modeReset
             case 2026:
                 res = synchronizedOutputActive ? modeSet : modeReset
+            case 2048:
+                // modifyOtherKeys DECRQM query (non-standard but some terminals report it)
+                res = modifyOtherKeysLevel > 0 ? modeSet : modeReset
             default:
                 break
             }
@@ -3313,8 +3032,9 @@ open class Terminal {
         conformance = .vt500
         hyperLinkTracking = nil
         lineFeedMode = options.convertEol
+        modifyOtherKeysLevel = 0
         resetAllColors()
-        tdel?.showCursor(source: self)
+        delegates.display?.showCursor(source: self)
         // MIGUEL TODO:
         // TODO: audit any new variables, those in setup might be useful
     }
@@ -3323,7 +3043,37 @@ open class Terminal {
     /// For a full reset see `resetToInitialState`
     public func softReset ()
     {
+        assertOnQueue()
         cmdSoftReset()
+    }
+
+    /// Resets terminal state after a child process exits.
+    ///
+    /// This cleans up modes and state that a process (like Claude Code, Codex CLI, vim, etc.)
+    /// may have enabled but failed to restore on exit — especially on crashes or SIGKILL.
+    /// Switches back to the normal buffer, performs a soft reset, clears the Kitty keyboard
+    /// stack, and ends any active synchronized output.
+    public func cleanupForProcessExit ()
+    {
+        assertOnQueue()
+        endSynchronizedOutput()
+        activateNormalBuffer(clearAlt: true)
+        cmdSoftReset()
+
+        // Reset Kitty keyboard protocol state for both buffers
+        kittyKeyboardFlagsMain = 0
+        kittyKeyboardFlagsAlt = 0
+        kittyKeyboardStackMain.removeAll()
+        kittyKeyboardStackAlt.removeAll()
+
+        // Ensure mouse and focus events are off
+        mouseMode = .off
+        bracketedPasteMode = false
+
+        // Reset OSC 133 semantic prompt state
+        semanticPromptState = .unknown
+
+        refresh(startRow: 0, endRow: rows - 1)
     }
     
     //
@@ -3493,9 +3243,17 @@ open class Terminal {
         case 0:
             cmdCharAttributes(pars)
         case 1:
-            // Configure Modifier Key Reporting Formats
-            // TODO: XTMODKEYS
+            // XTMODKEYS — CSI > Pp ; Pv m
+            // Pp selects the resource: 0=modifyKeyboard, 1=modifyCursorKeys,
+            // 2=modifyFunctionKeys, 4=modifyOtherKeys.
+            // Pv is the value. If omitted, the resource is disabled (reset to 0).
             if collect[0] == UInt8(ascii: ">") {
+                let resource = pars.count > 0 ? pars[0] : 0
+                let value    = pars.count > 1 ? pars[1] : 0
+                if resource == 4 {
+                    modifyOtherKeysLevel = max(0, min(value, 2))
+                }
+                // Resources 0, 1, 2 are accepted but not tracked (no behavioral impact yet)
                 break
             }
         default:
@@ -3860,7 +3618,7 @@ open class Terminal {
                 if allow80To132 {
                     // DECCOLM
                     resize (cols: 80, rows: rows)
-                    tdel?.sizeChanged(source: self)
+                    delegates.display?.sizeChanged(source: self)
                     resetToInitialState()
                 }
             case 4: // DECSCLM - Jump scroll mode
@@ -3935,7 +3693,7 @@ open class Terminal {
                 refresh (startRow: 0, endRow: rows - 1)
                 syncScrollArea ()
                 showCursor ()
-                tdel?.bufferActivated(source: self)
+                delegates.display?.bufferActivated(source: self)
                 
             case 2004: // bracketed paste mode (https://cirw.in/blog/bracketed-paste)
                 bracketedPasteMode = false
@@ -4088,7 +3846,7 @@ open class Terminal {
                 if allow80To132 {
                     resize (cols: 132, rows: rows)
                     resetToInitialState()
-                    tdel?.sizeChanged(source: self)
+                    delegates.display?.sizeChanged(source: self)
                 }
             case 4: // Smooth scroll mode
                 smoothScroll = true
@@ -4171,7 +3929,7 @@ open class Terminal {
                 refresh (startRow: 0, endRow: rows - 1)
                 syncScrollArea ()
                 showCursor ()
-                tdel?.bufferActivated(source: self)
+                delegates.display?.bufferActivated(source: self)
                 
             case 2004: // bracketed paste mode (https://cirw.in/blog/bracketed-paste)
                 // TODO: must implement bracketed paste mode
@@ -4645,7 +4403,8 @@ open class Terminal {
      */
     public func sendResponse (text: String)
     {
-        tdel?.send (source: self, data: ([UInt8] (text.utf8))[...])
+        assertOnQueue()
+        delegates.output?.send(source: self, data: ([UInt8] (text.utf8))[...])
     }
     
     /**
@@ -4654,6 +4413,7 @@ open class Terminal {
      */
     public func sendResponse (_ items: Any ...)
     {
+        assertOnQueue()
         var buffer: [UInt8] = []
         
         for item in items {
@@ -4667,7 +4427,7 @@ open class Terminal {
                 log ("Do not know how to handle type \(item)")
             }
         }
-        tdel?.send (source: self, data: buffer[...])
+        delegates.output?.send(source: self, data: buffer[...])
     }
     
 #if DEBUG
@@ -4696,6 +4456,7 @@ open class Terminal {
      */
     public func feed (byteArray: [UInt8])
     {
+        assertOnQueue()
         parse (buffer: byteArray[...])
     }
     
@@ -4705,6 +4466,7 @@ open class Terminal {
      */
     public func feed (text: String)
     {
+        assertOnQueue()
         parse (buffer: ([UInt8] (text.utf8))[...])
     }
 
@@ -4714,6 +4476,7 @@ open class Terminal {
      */
     public func feed (buffer: ArraySlice<UInt8>)
     {
+        assertOnQueue()
         parse (buffer: buffer)
     }
 
@@ -4723,6 +4486,7 @@ open class Terminal {
      */
     public func parse (buffer: ArraySlice<UInt8>)
     {
+        assertOnQueue()
         parser.parse(data: buffer)
     }
      
@@ -4792,6 +4556,7 @@ open class Terminal {
     
     public func updateFullScreen ()
     {
+        assertOnQueue()
         refreshStart = 0
         refreshEnd = rows
         
@@ -4810,6 +4575,7 @@ open class Terminal {
      */
     public func getUpdateRange () -> (startY: Int, endY: Int)?
     {
+        assertOnQueue()
         if refreshEnd == -1 && refreshStart == Int.max {
             //print ("Emtpy update range")
             return nil
@@ -4824,6 +4590,7 @@ open class Terminal {
      * available by scrolling.
      */
     public func garbageCollectPayload() {
+        assertOnQueue()
         // stop right away if there is nothing to collect
         if TinyAtom.lastCollected == TinyAtom.lastUsed {
             return
@@ -4867,6 +4634,7 @@ open class Terminal {
      */
     public func getScrollInvariantUpdateRange () -> (startY: Int, endY: Int)?
     {
+        assertOnQueue()
         if scrollInvariantRefreshEnd == -1 && scrollInvariantRefreshStart == Int.max {
             //print ("Emtpy update range")
             return nil
@@ -4880,6 +4648,7 @@ open class Terminal {
      */
     public func clearUpdateRange ()
     {
+        assertOnQueue()
         refreshStart = Int.max
         refreshEnd = -1
         
@@ -4892,6 +4661,7 @@ open class Terminal {
      * Returns: a tuple, where the first element contains the column (x) and the second the row (y) where the cursor is.
      */
     public func getCursorLocation() -> (x: Int, y: Int) {
+        assertOnQueue()
         return (buffer.x, buffer.y)
     }
     
@@ -4899,6 +4669,7 @@ open class Terminal {
      * Returns the uppermost visible row on the terminal buffer
      */
     public func getTopVisibleRow() -> Int {
+        assertOnQueue()
         return buffer.yDisp
     }
     
@@ -4907,6 +4678,7 @@ open class Terminal {
     /// for a soft reset see `softReset`
     public func resetToInitialState ()
     {
+        assertOnQueue()
         endSynchronizedOutput ()
         options.rows = rows
         options.cols = cols
@@ -4914,6 +4686,14 @@ open class Terminal {
         setup (isReset: true)
         clearAllKittyImages()
         cursorHidden = savedCursorHidden
+        // Reset protocol state that setup() may not touch
+        modifyOtherKeysLevel = 0
+        kittyKeyboardFlagsMain = 0
+        kittyKeyboardFlagsAlt = 0
+        kittyKeyboardStackMain.removeAll()
+        kittyKeyboardStackAlt.removeAll()
+        semanticPromptState = .unknown
+        promptMarks.removeAll()
         refresh (startRow: 0, endRow: rows-1)
         syncScrollArea ()
     }
@@ -4990,6 +4770,7 @@ open class Terminal {
     
     public func scroll (isWrapped: Bool = false)
     {
+        assertOnQueue()
         let buffer = self.buffer
         var newLine = blankLine
         if newLine.count != cols || newLine [0].attribute != eraseAttr () {
@@ -5119,12 +4900,13 @@ open class Terminal {
          *
          * @event scroll
          */
-        tdel?.scrolled(source: self, yDisp: buffer.yDisp)
+        delegates.display?.scrolled(source: self, yDisp: buffer.yDisp)
     }
         
     public func emitLineFeed ()
     {
-        tdel?.linefeed(source: self)
+        assertOnQueue()
+        delegates.display?.linefeed(source: self)
     }
     
     //
@@ -5212,6 +4994,7 @@ open class Terminal {
     
     public func resize (cols: Int, rows: Int)
     {
+        assertOnQueue()
         let newCols = max (cols, MINIMUM_COLS)
         let newRows = max (rows, MINIMUM_ROWS)
         if newCols == self.cols && newRows == self.rows {
@@ -5237,6 +5020,7 @@ open class Terminal {
      */
     public func changeHistorySize (_ newScrollback: Int?)
     {
+        assertOnQueue()
         // Only the normal buffer has scrollback, the alt buffer should never have scrollback
         normalBuffer.changeHistorySize(newScrollback)
         
@@ -5265,7 +5049,7 @@ open class Terminal {
         }
         scheduleSynchronizedOutputTimeout()
         if !wasActive {
-            tdel?.synchronizedOutputChanged(source: self, active: true)
+            delegates.display?.synchronizedOutputChanged(source: self, active: true)
         }
     }
 
@@ -5279,8 +5063,14 @@ open class Terminal {
         synchronizedOutputBufferIsAlternate = false
         synchronizedOutputTimeoutItem?.cancel()
         synchronizedOutputTimeoutItem = nil
-        refresh (startRow: 0, endRow: rows - 1)
-        tdel?.synchronizedOutputChanged(source: self, active: false)
+
+        // Always do a full refresh when synchronized output ends.
+        // Selective isDirty-based refresh is unsafe here because scrolling
+        // repositions lines without mutating them — isDirty tracks mutations,
+        // not viewport position changes. A partial refresh after scroll causes
+        // stale content to persist at old positions (visual stacking/corruption).
+        refresh(startRow: 0, endRow: rows - 1)
+        delegates.display?.synchronizedOutputChanged(source: self, active: false)
     }
 
     private func scheduleSynchronizedOutputTimeout ()
@@ -5338,6 +5128,7 @@ open class Terminal {
      */
     public func refresh (startRow: Int, endRow: Int)
     {
+        assertOnQueue()
         // TO BE HONEST - This probably should not be called directly,
         // instead the view shoudl after feeding data, determine if there is a need
         // to refresh based on the parameters provided for refresh ranges, and then
@@ -5348,21 +5139,23 @@ open class Terminal {
     
     public func showCursor ()
     {
+        assertOnQueue()
         if cursorHidden == false {
             return
         }
         cursorHidden = false
         //refresh (startRow: buffer.y, endRow: buffer.y)
-        tdel?.showCursor (source: self)
+        delegates.display?.showCursor(source: self)
     }
     
     public func hideCursor ()
     {
+        assertOnQueue()
         if cursorHidden {
             return
         }
         cursorHidden = true
-        tdel?.hideCursor(source: self)
+        delegates.display?.hideCursor(source: self)
     }
 
     // Encode button and position to characters
@@ -5392,6 +5185,7 @@ open class Terminal {
      */
     public func encodeButton (button: Int, release: Bool, shift: Bool, meta: Bool, control: Bool) -> Int
     {
+        assertOnQueue()
         var value: Int
 
         if release {
@@ -5427,7 +5221,8 @@ open class Terminal {
     }
     
     public func sendEvent (buttonFlags: Int, x: Int, y: Int) {
-      sendEvent(buttonFlags: buttonFlags, x: x, y: y, pixelX: x, pixelY: y)
+        assertOnQueue()
+        sendEvent(buttonFlags: buttonFlags, x: x, y: y, pixelX: x, pixelY: y)
     }
     
     /**
@@ -5438,6 +5233,7 @@ open class Terminal {
      */
     public func sendEvent (buttonFlags: Int, x: Int, y: Int, pixelX: Int, pixelY: Int)
     {
+        assertOnQueue()
         //print ("got \(mouseProtocol)")
         switch mouseProtocol {
         case .x10:
@@ -5471,6 +5267,7 @@ open class Terminal {
      */
     public func sendMotion (buttonFlags: Int, x: Int, y: Int, pixelX: Int, pixelY: Int)
     {
+        assertOnQueue()
         sendEvent(buttonFlags: buttonFlags+32, x: x, y: y, pixelX: pixelX, pixelY: pixelY)
     }
     
@@ -5488,14 +5285,16 @@ open class Terminal {
     
     public func setTitle (text: String)
     {
+        assertOnQueue()
         terminalTitle = text
-        tdel?.setTerminalTitle(source: self, title: text)
+        delegates.window?.setTerminalTitle(source: self, title: text)
     }
 
     public func setIconTitle (text: String)
     {
+        assertOnQueue()
         iconTitle = text
-        tdel?.setTerminalIconTitle(source: self, title: text)
+        delegates.window?.setTerminalIconTitle(source: self, title: text)
     }
 
     func reverseIndex ()
@@ -5617,6 +5416,7 @@ open class Terminal {
     /// - Parameter encoding: which encoding to use for the returned value, defaults to utf8
     public func getBufferAsData (kind: BufferKind = .active, encoding: String.Encoding = .utf8) -> Data
     {
+        assertOnQueue()
         var result = Data()
         
         let b = bufferFromKind(kind: kind)
@@ -5636,7 +5436,8 @@ open class Terminal {
     ///
     public func getText (start: Position, end: Position) -> String
     {
-        getText(start: start, end: end, buffer: buffer)
+        assertOnQueue()
+        return getText(start: start, end: end, buffer: buffer)
     }
 
     func getDisplayText (start: Position, end: Position) -> String
@@ -5785,120 +5586,4 @@ open class Terminal {
     {
         buffer.translateBufferLineToString(lineIndex: line, trimRight: true, startCol: start, endCol: end, skipNullCellsFollowingWide: true, characterProvider: { self.getCharacter(for: $0) }).replacingOccurrences(of: "\u{0}", with: " ")
     }
-}
-
-// Default implementations
-public extension TerminalDelegate {
-    func cursorStyleChanged (source: Terminal, newStyle: CursorStyle)
-    {
-        // Do nothing
-    }
-    
-    func setTerminalTitle (source: Terminal, title: String) {
-        // Do nothing
-    }
-
-    func setTerminalIconTitle (source: Terminal, title: String) {
-        // nothing
-    }
-    
-    func scrolled(source: Terminal, yDisp: Int) {
-        // nothing
-    }
-    
-    func linefeed(source: Terminal) {
-        // nothing
-    }
-    
-    func bufferActivated(source: Terminal) {
-        // nothing
-    }
-
-    func synchronizedOutputChanged(source: Terminal, active: Bool) {
-        // nothing
-    }
-    
-    func windowCommand(source: Terminal, command: Terminal.WindowManipulationCommand) -> [UInt8]? {
-        // no special handling
-        return nil
-    }
-    
-    func sizeChanged(source: Terminal) {
-        // nothing
-    }
-    
-    func bell (source: Terminal){
-        // nothing
-    }
-    
-    func isProcessTrusted (source: Terminal) -> Bool {
-        return true
-    }
-    
-    func selectionChanged (source: Terminal){
-        // nothing
-    }
-    
-    func showCursor(source: Terminal) {
-        // nothing
-    }
-
-    func hideCursor(source: Terminal) {
-        // nothing
-    }
-
-    func mouseModeChanged(source: Terminal) {
-    }
-
-    func cellSizeInPixels(source: Terminal) -> (width: Int, height: Int)? {
-        return nil
-    }
-    
-    func hostCurrentDirectoryUpdated (source: Terminal) {
-    }
-    
-    func hostCurrentDocumentUpdated (source: Terminal) {
-    }
-    
-    func colorChanged (source: Terminal, idx: Int?) {
-        
-    }
-    
-    func getColors (source: Terminal) -> (foreground: Color, background: Color)
-    {
-        return (source.foregroundColor, source.backgroundColor)
-    }
-    
-    func setForegroundColor (source: Terminal, color: Color)
-    {
-        source.foregroundColor = color
-    }
-    
-    func setBackgroundColor (source: Terminal, color: Color)
-    {
-        source.backgroundColor = color
-    }
-    
-    func setCursorColor (source: Terminal, color: Color?)
-    {
-        source.cursorColor = color
-    }
-    
-    func iTermContent (source: Terminal, content: ArraySlice<UInt8>) {
-    }
-    
-    func clipboardCopy(source: Terminal, content: Data) {
-    }
-    
-    func notify(source: Terminal, title: String, body: String) {
-    }
-
-    func progressReport(source: Terminal, report: Terminal.ProgressReport) {
-    }
-    
-    func createImageFromBitmap (source: Terminal, bytes: inout [UInt8], width: Int, height: Int){
-    }
-
-    func createImage (source: Terminal, data: Data, width: ImageSizeRequest, height: ImageSizeRequest, preserveAspectRatio: Bool) {
-    }    
 }

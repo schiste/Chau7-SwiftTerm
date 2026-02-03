@@ -8,6 +8,7 @@
 import Testing
 @testable import SwiftTerm
 
+@MainActor
 final class HistoryTests {
     
     class TestDelegate: TerminalDelegate {

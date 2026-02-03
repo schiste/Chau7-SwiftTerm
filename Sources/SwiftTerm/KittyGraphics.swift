@@ -1027,7 +1027,7 @@ extension Terminal {
                 if pixelOffsetX < 0 { pixelOffsetX = 0 }
                 if pixelOffsetY < 0 { pixelOffsetY = 0 }
                 if (pixelOffsetX != 0 || pixelOffsetY != 0),
-                   let cellSize = tdel?.cellSizeInPixels(source: self) {
+                   let cellSize = delegates.window?.cellSizeInPixels(source: self) {
                     let maxX = max(0, cellSize.width - 1)
                     let maxY = max(0, cellSize.height - 1)
                     pixelOffsetX = min(pixelOffsetX, maxX)
@@ -1098,7 +1098,7 @@ extension Terminal {
         if pixelOffsetX < 0 { pixelOffsetX = 0 }
         if pixelOffsetY < 0 { pixelOffsetY = 0 }
         if (pixelOffsetX != 0 || pixelOffsetY != 0),
-           let cellSize = tdel?.cellSizeInPixels(source: self) {
+           let cellSize = delegates.window?.cellSizeInPixels(source: self) {
             let maxX = max(0, cellSize.width - 1)
             let maxY = max(0, cellSize.height - 1)
             pixelOffsetX = min(pixelOffsetX, maxX)
@@ -1146,9 +1146,9 @@ extension Terminal {
 
         switch displayPayload {
         case .png(let data):
-            tdel?.createImage(source: self, data: data, width: widthRequest, height: heightRequest, preserveAspectRatio: preserveAspectRatio)
+            delegates.image?.createImage(source: self, data: data, width: widthRequest, height: heightRequest, preserveAspectRatio: preserveAspectRatio)
         case .rgba(var bytes, let width, let height):
-            tdel?.createImageFromBitmap(source: self, bytes: &bytes, width: width, height: height)
+            delegates.image?.createImageFromBitmap(source: self, bytes: &bytes, width: width, height: height)
         }
 
         if origin.isRelative || control.cursorPolicy == 1 {
@@ -1158,12 +1158,12 @@ extension Terminal {
                                                     widthRequest: widthRequest,
                                                     heightRequest: heightRequest,
                                                     preserveAspectRatio: preserveAspectRatio,
-                                                    cellSize: tdel?.cellSizeInPixels(source: self),
+                                                    cellSize: delegates.window?.cellSizeInPixels(source: self),
                                                     pixelOffsetX: pixelOffsetX,
                                                     pixelOffsetY: pixelOffsetY) {
             let moveCols = max(1, grid.cols)
             let moveRows = max(1, grid.rows)
-            let useIndex = tdel?.cellSizeInPixels(source: self) == nil
+            let useIndex = delegates.window?.cellSizeInPixels(source: self) == nil
             applyKittyCursorMovement(startCol: placementCol,
                                      startRow: placementRow,
                                      cols: moveCols,

@@ -1,6 +1,7 @@
 import Testing
 @testable import SwiftTerm
 
+@MainActor
 final class ParserTests {
     private let esc = "\u{1b}"
 
