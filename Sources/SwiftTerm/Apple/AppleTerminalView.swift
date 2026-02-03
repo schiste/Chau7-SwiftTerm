@@ -55,6 +55,8 @@ struct ViewLineInfo {
     // contains an array of (image, column where the image was found)
     var images: [TerminalImage]?
     var kittyPlaceholders: [KittyPlaceholderCell]
+    var blockElements: [BlockElementRenderItem]
+    var boxDrawings: [BoxDrawingRenderItem]
 }
 
 extension TerminalView {
@@ -407,7 +409,11 @@ extension TerminalView {
             tf = fontSet.normal
         }
         
-        let fgColor = mapColor (color: fg, isFg: true, isBold: isBold, useBrightColors: useBrightColors)
+        var fgColor = mapColor (color: fg, isFg: true, isBold: isBold, useBrightColors: useBrightColors)
+        // Apply dim/faint attribute (SGR 2) - reduce color intensity
+        if flags.contains(.dim) {
+            fgColor = fgColor.dimmedColor()
+        }
         var nsattr: [NSAttributedString.Key:Any] = [
             .font: tf,
             .foregroundColor: fgColor,
@@ -538,6 +544,8 @@ extension TerminalView {
         var kittyPlaceholders: [KittyPlaceholderCell] = []
         var previousPlaceholder: KittyPlaceholderCell?
         var previousPlaceholderAttribute: Attribute?
+        var blockElements: [BlockElementRenderItem] = []
+        var boxDrawings: [BoxDrawingRenderItem] = []
         
         while col < cols {
             let ch: CharData = line[col]
@@ -568,12 +576,36 @@ extension TerminalView {
             }
             
             let character = ch.code == 0 ? " " : terminal.getCharacter(for: ch)
-            if let placeholder = KittyPlaceholderDecoder.decode(character: character,
-                                                                attribute: attr,
-                                                                row: row,
-                                                                col: col,
-                                                                previous: previousPlaceholder,
-                                                                previousAttribute: previousPlaceholderAttribute) {
+
+            // Renders box drawing characters independently of the font
+            // U+2500...U+257F
+            if customBlockGlyphs,
+               ch.code >= BoxDrawingRenderer.lowerBoundary,
+               ch.code <= BoxDrawingRenderer.upperBoundary {
+                let fgColor = (currentAttributes[.foregroundColor] as? TTColor) ?? nativeForegroundColor
+                boxDrawings.append(BoxDrawingRenderItem(column: col,
+                                                        columnWidth: width,
+                                                        codePoint: UInt32(ch.code),
+                                                        foregroundColor: fgColor))
+                builder?.append(text: " ", attributes: currentAttributes)
+                previousPlaceholder = nil
+                previousPlaceholderAttribute = nil
+            // Renders block elements independently of the font
+            // U+2580...U+259F
+            } else if customBlockGlyphs,
+                      (ch.code > BlockElementMapping.lowerBoundary && ch.code < BlockElementMapping.upperBoundary),
+                      let rects = BlockElementMapping.rects(for: UInt32(ch.code)) {
+                let fgColor = (currentAttributes[.foregroundColor] as? TTColor) ?? nativeForegroundColor
+                blockElements.append(BlockElementRenderItem(column: col, columnWidth: width, rects: rects, foregroundColor: fgColor))
+                builder?.append(text: " ", attributes: currentAttributes)
+                previousPlaceholder = nil
+                previousPlaceholderAttribute = nil
+            } else if let placeholder = KittyPlaceholderDecoder.decode(character: character,
+                                                                       attribute: attr,
+                                                                       row: row,
+                                                                       col: col,
+                                                                       previous: previousPlaceholder,
+                                                                       previousAttribute: previousPlaceholderAttribute) {
                 kittyPlaceholders.append(placeholder)
                 builder?.append(text: " ", attributes: currentAttributes)
                 previousPlaceholder = placeholder
@@ -591,7 +623,11 @@ extension TerminalView {
             segments.append(finished)
         }
         
-        return ViewLineInfo(segments: segments, images: line.images, kittyPlaceholders: kittyPlaceholders)
+        return ViewLineInfo(segments: segments,
+                            images: line.images,
+                            kittyPlaceholders: kittyPlaceholders,
+                            blockElements: blockElements,
+                            boxDrawings: boxDrawings)
     }
     
     /// Returns the selection range for the specified row, if any.
@@ -728,6 +764,100 @@ extension TerminalView {
             }
         }
         currentContext.restoreGState()
+    }
+
+    private func alignToPixel(_ value: CGFloat, scale: CGFloat, rule: FloatingPointRoundingRule) -> CGFloat {
+        guard scale > 0 else {
+            return value
+        }
+        return (value * scale).rounded(rule) / scale
+    }
+
+    private func pixelAlignedRect(_ rect: CGRect, scale: CGFloat) -> CGRect {
+        let minX = alignToPixel(rect.minX, scale: scale, rule: .down)
+        let maxX = alignToPixel(rect.maxX, scale: scale, rule: .up)
+        let minY = alignToPixel(rect.minY, scale: scale, rule: .down)
+        let maxY = alignToPixel(rect.maxY, scale: scale, rule: .up)
+        return CGRect(x: minX,
+                      y: minY,
+                      width: max(0, maxX - minX),
+                      height: max(0, maxY - minY))
+    }
+
+    private func drawBlockElements(_ elements: [BlockElementRenderItem], lineOrigin: CGPoint, in context: CGContext) {
+        guard !elements.isEmpty else {
+            return
+        }
+        context.saveGState()
+        let useAntialias = antiAliasCustomBlockGlyphs
+        context.setShouldAntialias(useAntialias)
+        context.setAllowsAntialiasing(useAntialias)
+
+        let scale = backingScaleFactor()
+        let cellHeight = cellDimension.height
+
+        for element in elements {
+            let cellWidth = cellDimension.width * CGFloat(element.columnWidth)
+            let cellOrigin = CGPoint(x: lineOrigin.x + CGFloat(element.column) * cellDimension.width,
+                                     y: lineOrigin.y)
+            let xEighth = cellWidth / 8.0
+            let yEighth = cellHeight / 8.0
+            let baseAlpha = element.foregroundColor.cgColor.alpha
+
+            for rect in element.rects {
+                var drawRect = rect.rect(in: cellOrigin, xEighth: xEighth, yEighth: yEighth, cellHeight: cellHeight)
+                if !useAntialias {
+                    drawRect = pixelAlignedRect(drawRect, scale: scale)
+                }
+                if drawRect.width <= 0 || drawRect.height <= 0 {
+                    continue
+                }
+                let resolvedAlpha = max(0, min(1, baseAlpha * rect.alpha.rawValue))
+                let fillColor = element.foregroundColor.withAlphaComponent(resolvedAlpha)
+                context.setFillColor(fillColor.cgColor)
+                context.fill(drawRect)
+            }
+        }
+        context.restoreGState()
+    }
+
+    private func drawBoxDrawings(_ items: [BoxDrawingRenderItem], lineOrigin: CGPoint, in context: CGContext) {
+        guard !items.isEmpty else {
+            return
+        }
+        context.saveGState()
+        context.setShouldAntialias(false)
+        context.setAllowsAntialiasing(false)
+
+        let scale = backingScaleFactor()
+        let boxThicknessScale: CGFloat = 1.35
+        let minThicknessPx = max(1, Int(round(scale)))
+        let baseThicknessPx = max(minThicknessPx,
+                                  Int(round(scale * fontSet.underlineThickness() * boxThicknessScale)))
+        let baseCellWidthPx = max(1, Int(round(cellDimension.width * scale)))
+        let baseCellHeightPx = max(1, Int(round(cellDimension.height * scale)))
+        let cellHeight = CGFloat(baseCellHeightPx) / scale
+        let lineOriginPxX = round(lineOrigin.x * scale)
+        let lineOriginPxY = round(lineOrigin.y * scale)
+
+        for item in items {
+            let cellWidthPx = baseCellWidthPx * item.columnWidth
+            let cellWidth = CGFloat(cellWidthPx) / scale
+            let cellOrigin = CGPoint(x: (lineOriginPxX + CGFloat(item.column * baseCellWidthPx)) / scale,
+                                     y: lineOriginPxY / scale)
+            let baseAlpha = item.foregroundColor.cgColor.alpha
+            let resolvedAlpha = max(0, min(1, baseAlpha))
+            let color = item.foregroundColor.withAlphaComponent(resolvedAlpha)
+            BoxDrawingRenderer.draw(codePoint: item.codePoint,
+                                    in: context,
+                                    cellOrigin: cellOrigin,
+                                    cellSize: CGSize(width: cellWidth, height: cellHeight),
+                                    scale: scale,
+                                    color: color,
+                                    baseThicknessPx: baseThicknessPx)
+        }
+
+        context.restoreGState()
     }
 
     
@@ -950,6 +1080,21 @@ extension TerminalView {
                 }
             }
 
+            if !lineInfo.boxDrawings.isEmpty {
+                drawBoxDrawings(lineInfo.boxDrawings, lineOrigin: lineOrigin, in: context)
+            }
+
+            if !lineInfo.blockElements.isEmpty {
+                drawBlockElements(lineInfo.blockElements, lineOrigin: lineOrigin, in: context)
+            }
+
+            context.setShouldAntialias(true)
+            context.setAllowsAntialiasing(true)
+            #if os(macOS)
+            context.setShouldSmoothFonts(true)
+            context.setAllowsFontSmoothing(true)
+            #endif
+
             for segment in lineInfo.segments {
                 guard segment.attributedString.length > 0 else {
                     continue
@@ -1131,7 +1276,7 @@ extension TerminalView {
                 
                 context.move(to: end)
                 context.addLine(to: start)
-                let size = 6.0
+                let size = 12.0
                 let location = drawStart ? end : start
                 
                 let rect = CGRect (origin:
@@ -1228,6 +1373,8 @@ extension TerminalView {
             return
         } else if terminal.cursorHidden == false && caretView.superview != self {
             addSubview(caretView)
+        } else if terminal.cursorHidden == true && caretView.superview == self {
+            caretView.removeFromSuperview()
         }
         let doublePosition = buffer.lines [vy].renderMode == .single ? 1.0 : 2.0
         #if os(iOS) || os(visionOS)
@@ -1410,7 +1557,7 @@ extension TerminalView {
             scrollDown (lines: terminal.rows)
         }
     }
-    
+
     /// Scrolls up the content of the terminal the specified number of lines
     public func scrollUp (lines: Int)
     {
@@ -1722,7 +1869,7 @@ extension TerminalView {
                 attachedImage.kittyPixelOffsetY = context.pixelOffsetY
             }
             
-            buffer.lines [buffer.y+buffer.yBase].attach(image: attachedImage)
+            buffer.attachImage(attachedImage, toLineAt: buffer.y+buffer.yBase)
 
             terminal.updateRange (buffer.y)
 

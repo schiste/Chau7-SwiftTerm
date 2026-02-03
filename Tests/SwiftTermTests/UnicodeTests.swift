@@ -152,7 +152,7 @@ final class SwiftTermUnicode {
         #expect(char0_0 == "👩‍❤️‍👨")
     }
 
-    func testCJKCharacterPositioning ()
+    @Test func testCJKCharacterPositioning ()
     {
         let h = HeadlessTerminal (queue: SwiftTermTests.queue) { exitCode in }
         let t = h.terminal!
@@ -162,23 +162,23 @@ final class SwiftTermUnicode {
         t.feed (text: "あいう")
 
         // Verify character positions
-        XCTAssertEqual(t.getCharacter(col: 0, row: 0), "あ")
-        XCTAssertEqual(t.getCharacter(col: 1, row: 0), "\u{0}")  // placeholder
-        XCTAssertEqual(t.getCharacter(col: 2, row: 0), "い")
-        XCTAssertEqual(t.getCharacter(col: 3, row: 0), "\u{0}")  // placeholder
-        XCTAssertEqual(t.getCharacter(col: 4, row: 0), "う")
-        XCTAssertEqual(t.getCharacter(col: 5, row: 0), "\u{0}")  // placeholder
+        #expect(t.getCharacter(col: 0, row: 0) == "あ")
+        #expect(t.getCharacter(col: 1, row: 0) == "\u{0}")  // placeholder
+        #expect(t.getCharacter(col: 2, row: 0) == "い")
+        #expect(t.getCharacter(col: 3, row: 0) == "\u{0}")  // placeholder
+        #expect(t.getCharacter(col: 4, row: 0) == "う")
+        #expect(t.getCharacter(col: 5, row: 0) == "\u{0}")  // placeholder
 
         // Verify character widths
-        XCTAssertEqual(t.getCharData(col: 0, row: 0)?.width, 2)
-        XCTAssertEqual(t.getCharData(col: 2, row: 0)?.width, 2)
-        XCTAssertEqual(t.getCharData(col: 4, row: 0)?.width, 2)
+        #expect(t.getCharData(col: 0, row: 0)?.width == 2)
+        #expect(t.getCharData(col: 2, row: 0)?.width == 2)
+        #expect(t.getCharData(col: 4, row: 0)?.width == 2)
 
         // Cursor should be at column 6 after 3 double-width characters
-        XCTAssertEqual(t.buffer.x, 6)
+        #expect(t.buffer.x == 6)
     }
 
-    func testCJKMixedWithAscii ()
+    @Test func testCJKMixedWithAscii ()
     {
         let h = HeadlessTerminal (queue: SwiftTermTests.queue) { exitCode in }
         let t = h.terminal!
@@ -187,30 +187,30 @@ final class SwiftTermUnicode {
         t.feed (text: "aあbいc")
 
         // 'a' at col 0 (width 1)
-        XCTAssertEqual(t.getCharacter(col: 0, row: 0), "a")
-        XCTAssertEqual(t.getCharData(col: 0, row: 0)?.width, 1)
+        #expect(t.getCharacter(col: 0, row: 0) == "a")
+        #expect(t.getCharData(col: 0, row: 0)?.width == 1)
 
         // 'あ' at col 1 (width 2)
-        XCTAssertEqual(t.getCharacter(col: 1, row: 0), "あ")
-        XCTAssertEqual(t.getCharData(col: 1, row: 0)?.width, 2)
+        #expect(t.getCharacter(col: 1, row: 0) == "あ")
+        #expect(t.getCharData(col: 1, row: 0)?.width == 2)
 
         // 'b' at col 3 (width 1)
-        XCTAssertEqual(t.getCharacter(col: 3, row: 0), "b")
-        XCTAssertEqual(t.getCharData(col: 3, row: 0)?.width, 1)
+        #expect(t.getCharacter(col: 3, row: 0) == "b")
+        #expect(t.getCharData(col: 3, row: 0)?.width == 1)
 
         // 'い' at col 4 (width 2)
-        XCTAssertEqual(t.getCharacter(col: 4, row: 0), "い")
-        XCTAssertEqual(t.getCharData(col: 4, row: 0)?.width, 2)
+        #expect(t.getCharacter(col: 4, row: 0) == "い")
+        #expect(t.getCharData(col: 4, row: 0)?.width == 2)
 
         // 'c' at col 6 (width 1)
-        XCTAssertEqual(t.getCharacter(col: 6, row: 0), "c")
-        XCTAssertEqual(t.getCharData(col: 6, row: 0)?.width, 1)
+        #expect(t.getCharacter(col: 6, row: 0) == "c")
+        #expect(t.getCharData(col: 6, row: 0)?.width == 1)
 
         // Cursor should be at column 7
-        XCTAssertEqual(t.buffer.x, 7)
+        #expect(t.buffer.x == 7)
     }
 
-    func testChineseCharacterPositioning ()
+    @Test func testChineseCharacterPositioning ()
     {
         let h = HeadlessTerminal (queue: SwiftTermTests.queue) { exitCode in }
         let t = h.terminal!
@@ -218,28 +218,17 @@ final class SwiftTermUnicode {
         // Test Chinese characters (also double-width)
         t.feed (text: "中文字")
 
-        XCTAssertEqual(t.getCharacter(col: 0, row: 0), "中")
-        XCTAssertEqual(t.getCharacter(col: 2, row: 0), "文")
-        XCTAssertEqual(t.getCharacter(col: 4, row: 0), "字")
+        #expect(t.getCharacter(col: 0, row: 0) == "中")
+        #expect(t.getCharacter(col: 2, row: 0) == "文")
+        #expect(t.getCharacter(col: 4, row: 0) == "字")
 
         // All should be width 2
-        XCTAssertEqual(t.getCharData(col: 0, row: 0)?.width, 2)
-        XCTAssertEqual(t.getCharData(col: 2, row: 0)?.width, 2)
-        XCTAssertEqual(t.getCharData(col: 4, row: 0)?.width, 2)
+        #expect(t.getCharData(col: 0, row: 0)?.width == 2)
+        #expect(t.getCharData(col: 2, row: 0)?.width == 2)
+        #expect(t.getCharData(col: 4, row: 0)?.width == 2)
 
-        XCTAssertEqual(t.buffer.x, 6)
+        #expect(t.buffer.x == 6)
     }
-
-    static var allTests = [
-        ("testCombiningCharacters", testCombiningCharacters),
-        ("testEmoji", testEmoji),
-        ("testEmojiWithModifierBase", testEmojiWithModifierBase),
-        ("testEmojiZWJSequence", testEmojiZWJSequence),
-        ("testEmojiZWJSequenceSimple", testEmojiZWJSequenceSimple),
-        ("testCJKCharacterPositioning", testCJKCharacterPositioning),
-        ("testCJKMixedWithAscii", testCJKMixedWithAscii),
-        ("testChineseCharacterPositioning", testChineseCharacterPositioning),
-    ]
     @Test func testZwJSequencePreservesVariationSelector16() {
         let h = HeadlessTerminal (queue: SwiftTermTests.queue) { exitCode in }
         let t = h.terminal!
@@ -283,6 +272,31 @@ final class SwiftTermUnicode {
         ).replacingOccurrences(of: "\u{0}", with: " ")
 
         #expect(line == "\(sequence)X")
+    }
+
+    @Test func testNoBreakSpaceWidth() {
+        let h = HeadlessTerminal (queue: SwiftTermTests.queue) { exitCode in }
+        let t = h.terminal!
+
+        // Test NO-BREAK SPACE (U+00A0) positioning
+        // NBSP should have width 1, same as regular space
+        // This is important for applications like Claude Code that use NBSP after prompt
+        t.feed (text: ">\u{00A0}x")  // > + NBSP + x
+
+        // '>' at col 0 (width 1)
+        #expect(t.getCharacter(col: 0, row: 0) == ">")
+        #expect(t.getCharData(col: 0, row: 0)?.width == 1)
+
+        // NBSP at col 1 (width 1, NOT -1)
+        #expect(t.getCharacter(col: 1, row: 0) == "\u{00A0}")
+        #expect(t.getCharData(col: 1, row: 0)?.width == 1)
+
+        // 'x' at col 2 (width 1)
+        #expect(t.getCharacter(col: 2, row: 0) == "x")
+        #expect(t.getCharData(col: 2, row: 0)?.width == 1)
+
+        // Cursor should be at column 3
+        #expect(t.buffer.x == 3)
     }
 
 }
