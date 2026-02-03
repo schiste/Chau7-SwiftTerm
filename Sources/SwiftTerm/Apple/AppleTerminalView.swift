@@ -289,29 +289,6 @@ extension TerminalView {
 
     public func synchronizedOutputChanged (source: Terminal, active: Bool)
     {
-        if active {
-            // Hide cursor during synchronized output to prevent flicker from
-            // intermediate cursor positions during full-buffer redraws (e.g. Claude Code / Ink)
-            caretView?.removeFromSuperview()
-        } else {
-            // Sync ended: the live buffer now has the final frame.
-            // Bypass the 60fps throttle so the complete frame appears immediately
-            // instead of waiting up to 16.67ms behind a potentially stale pending update.
-            //
-            // IMPORTANT: Defer to the next run-loop iteration because this callback
-            // fires DURING feed() processing — the terminal may still have unprocessed
-            // bytes in the current feed buffer. Rendering synchronously here would
-            // capture an intermediate buffer state (e.g. "1" written but "0" not yet),
-            // producing a single-frame glitch visible as a gap between characters.
-            // DispatchQueue.main.async defers by microseconds (not 16.67ms like
-            // DisplayLink), just enough for feed() to finish all remaining bytes.
-            updateScroller()
-            pendingDisplay = false
-            DispatchQueue.main.async { [weak self] in
-                self?.updateDisplay(notifyAccessibility: true)
-            }
-            return
-        }
         updateScroller()
         queuePendingDisplay()
     }
