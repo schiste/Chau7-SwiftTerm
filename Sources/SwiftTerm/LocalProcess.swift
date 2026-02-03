@@ -9,7 +9,7 @@
 #if !os(iOS) && !os(Windows)
 import Foundation
 import Dispatch
-#if canImport(Subprocess)
+#if canImport(Subprocess) && !os(macOS)
 import Subprocess
 import System
 #endif
@@ -87,7 +87,7 @@ public class LocalProcess {
     
     var io: DispatchIO?
     
-    #if canImport(Subprocess)
+    #if canImport(Subprocess) && !os(macOS)
     // Swift Subprocess related properties
     private var subprocessTask: Task<Void, Error>?
     private var masterFd: Int32 = -1
@@ -143,7 +143,7 @@ public class LocalProcess {
     /* Used to generate the next file name counter */
     var logFileCounter = 0
     
-    #if canImport(Subprocess)
+    #if canImport(Subprocess) && !os(macOS)
     // Create pseudo-terminal pair using openpty
     private func createPseudoTerminal() throws -> (master: Int32, slave: Int32) {
         var master: Int32 = -1
@@ -248,7 +248,7 @@ public class LocalProcess {
         #endif
     }
     
-    #if canImport(Subprocess)
+    #if canImport(Subprocess) && !os(macOS)
     private func startProcessWithSubprocess(executable: String, args: [String], environment: [String]?, execName: String?, currentDirectory: String?) {
         do {
             var size = delegate?.getWindowSize () ?? winsize()
@@ -398,7 +398,7 @@ public class LocalProcess {
 
     public func terminate()
     {
-        #if canImport(Subprocess)
+        #if canImport(Subprocess) && !os(macOS)
         if let task = subprocessTask {
             task.cancel()
             subprocessTask = nil
