@@ -169,7 +169,7 @@ extension TerminalView {
         let lineLeading = CTFontGetLeading (fontSet.normal)
         let baseLineHeight = lineAscent + lineDescent + lineLeading
         #if os(macOS)
-        let defaultLineHeight = NSLayoutManager.defaultLineHeight(for: fontSet.normal)
+        let defaultLineHeight = NSLayoutManager().defaultLineHeight(for: fontSet.normal)
         #elseif os(iOS) || os(visionOS)
         let defaultLineHeight = fontSet.normal.lineHeight
         #else
