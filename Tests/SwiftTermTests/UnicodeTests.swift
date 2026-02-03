@@ -60,6 +60,20 @@ final class SwiftTermUnicode {
         #expect(char2_0?.width == 1)
     }
 
+    @Test func testEmojiPresentationWidth() {
+        let h = HeadlessTerminal (queue: SwiftTermTests.queue) { exitCode in }
+        let t = h.terminal!
+
+        t.feed (text: "😀x")
+        let char0_0 = t.getCharData(col: 0, row: 0)
+        let char1_0 = t.getCharacter(col: 1, row: 0)
+        let char2_0 = t.getCharacter(col: 2, row: 0)
+
+        #expect(char0_0?.width == 2)
+        #expect(char1_0 == "\u{0}")
+        #expect(char2_0 == "x")
+    }
+
     @Test func testCombinedPositioning() {
         let h = HeadlessTerminal (queue: SwiftTermTests.queue) { exitCode in }
         let t = h.terminal!

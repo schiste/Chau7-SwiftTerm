@@ -2438,6 +2438,7 @@ open class Terminal {
                         return
                     }
                     if popCount >= stack.count {
+                        // Popping past the bottom resets to defaults per kitty protocol.
                         flags = 0
                         stack.removeAll()
                         return

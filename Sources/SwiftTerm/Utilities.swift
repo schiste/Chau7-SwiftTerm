@@ -371,7 +371,7 @@ struct UnicodeUtil {
             return 0
         }
 
-        if props.isEmojiPresentation || isEmojiVs16Base(rune: rune) || isTwoColumnEmoji(irune) {
+        if props.isEmojiPresentation || isTwoColumnEmoji(irune) {
             return 2
         }
 

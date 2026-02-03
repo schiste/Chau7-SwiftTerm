@@ -33,6 +33,7 @@ typealias TTFont = NSFont
 typealias TTRect = CGRect
 typealias TTBezierPath = NSBezierPath
 public typealias TTImage = NSImage
+private let defaultLineHeightLayoutManager = NSLayoutManager()
 #endif
 
 /// A rendered fragment that starts at a specific column and contains a run of
@@ -169,7 +170,7 @@ extension TerminalView {
         let lineLeading = CTFontGetLeading (fontSet.normal)
         let baseLineHeight = lineAscent + lineDescent + lineLeading
         #if os(macOS)
-        let defaultLineHeight = NSLayoutManager().defaultLineHeight(for: fontSet.normal)
+        let defaultLineHeight = defaultLineHeightLayoutManager.defaultLineHeight(for: fontSet.normal)
         #elseif os(iOS) || os(visionOS)
         let defaultLineHeight = fontSet.normal.lineHeight
         #else
