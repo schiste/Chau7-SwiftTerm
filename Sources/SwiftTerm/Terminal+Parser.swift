@@ -214,6 +214,7 @@ extension Terminal {
             buffer.insertCharacter (charData)
         }
 
+        updateRange(borrowing: buffer, buffer.y)
         readingBuffer.done()
     }
 }

@@ -204,8 +204,8 @@ public class LocalProcess {
                 }
             }
         })
-        dispatchQueue.async { [weak self] in
-            self?.delegate?.dataReceived(slice: b[...])
+        dispatchQueue.sync {
+            delegate?.dataReceived(slice: b[...])
         }
         io?.read(offset: 0, length: readSize, queue: readQueue, ioHandler: childProcessRead)
     }
